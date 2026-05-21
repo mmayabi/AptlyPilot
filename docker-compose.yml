@@ -1,0 +1,58 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aptly-pilot-api
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/tests:/app/tests
+      - ./examples:/app/examples
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+    networks:
+      - aptly_pilot_net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: aptly-pilot-postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aptly_pilot}
+      POSTGRES_USER: ${POSTGRES_USER:-aptly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aptly}
+    ports:
+      - "5432:5432"
+    volumes:
+      - aptly_pilot_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-aptly} -d $${POSTGRES_DB:-aptly_pilot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - aptly_pilot_net
+
+volumes:
+  aptly_pilot_postgres_data:
+
+networks:
+  aptly_pilot_net:
+    name: aptly_pilot_net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.50.0/24
