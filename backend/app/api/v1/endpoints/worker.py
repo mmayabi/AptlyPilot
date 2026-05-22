@@ -55,21 +55,25 @@ def run_worker_once_endpoint(
         message="Worker item executed",
         queue_item=worker_queue_to_read(item),
     )
-#while True:
-#    recover_stale_running_items()
-#    run_once()
-#    sleep(5)
 
 
 @router.get("/queue", response_model=list[WorkerQueueRead])
 def list_worker_queue_endpoint(
     status_filter: WorkerQueueStatus | None = None,
+    job_id: int | None = None,
+    schedule_id: int | None = None,
+    execution_id: str | None = None,
     session: Session = Depends(get_db_session),
     current_user: User = Depends(require_viewer),
 ):
-    items = list_worker_queue(session, status_filter=status_filter)
+    items = list_worker_queue(
+        session=session,
+        status_filter=status_filter,
+        job_id=job_id,
+        schedule_id=schedule_id,
+        execution_id=execution_id,
+    )
     return [worker_queue_to_read(item) for item in items]
-
 
 @router.post("/recover-stale")
 def recover_stale_worker_items_endpoint(

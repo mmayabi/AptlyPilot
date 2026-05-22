@@ -231,10 +231,14 @@ def mark_step_success(
     session.add(item)
     session.add(step)
 
-    enqueue_next_step_after_success(job, step, session)
+    enqueue_next_step_after_success(
+        job=job,
+        completed_step=step,
+        completed_queue_item=item,
+        session=session,
+    )
 
     session.commit()
-
 
 def mark_step_failed(
     item: WorkerQueueItem,

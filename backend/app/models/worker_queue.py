@@ -26,6 +26,7 @@ class WorkerQueueItem(SQLModel, table=True):
     """
     صف اجرای Worker.
     هر رکورد نشان‌دهنده درخواست اجرای یک JobStep است.
+    execution_id همه stepهای یک اجرای کامل job را به هم وصل می‌کند.
     """
     __tablename__ = "worker_queue"
 
@@ -33,6 +34,9 @@ class WorkerQueueItem(SQLModel, table=True):
 
     job_id: int = Field(foreign_key="jobs.id", index=True)
     job_step_id: int = Field(foreign_key="job_steps.id", index=True)
+    schedule_id: int | None = Field(default=None, foreign_key="job_schedules.id", index=True)
+
+    execution_id: str = Field(index=True)
 
     status: WorkerQueueStatus = Field(default=WorkerQueueStatus.QUEUED, index=True)
 

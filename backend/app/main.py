@@ -11,6 +11,10 @@ from app.workers.background_worker import (
     start_background_worker,
     stop_background_worker,
 )
+from app.workers.background_scheduler import (
+    start_background_scheduler,
+    stop_background_scheduler,
+)
 
 
 @asynccontextmanager
@@ -22,9 +26,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if settings.ENABLE_IN_APP_WORKER:
         start_background_worker()
 
+    if settings.ENABLE_IN_APP_SCHEDULER:
+        start_background_scheduler()
+
     try:
         yield
     finally:
+        if settings.ENABLE_IN_APP_SCHEDULER:
+            stop_background_scheduler()
+
         if settings.ENABLE_IN_APP_WORKER:
             stop_background_worker()
 

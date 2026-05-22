@@ -33,10 +33,13 @@ class Settings(BaseSettings):
     DEFAULT_SCRIPTS_FILE: Path = SCRIPTS_DIR / "aptly_default_scripts.py"
     
     # تنظیمات Worker
-    ENABLE_IN_APP_WORKER: bool = True
     WORKER_HEARTBEAT_INTERVAL_SECONDS: int = 30
     WORKER_STALE_HEARTBEAT_SECONDS: int = 300
     WORKER_POLL_INTERVAL_SECONDS: int = 5
+
+    ENABLE_IN_APP_WORKER: bool = True
+    ENABLE_IN_APP_SCHEDULER: bool = True
+    SCHEDULER_POLL_INTERVAL_SECONDS: int = 60
 
     model_config = SettingsConfigDict(
         env_file=".env",

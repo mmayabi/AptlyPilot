@@ -1,6 +1,7 @@
 # file: app/services/worker_queue_service.py
 
 from datetime import datetime
+from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
@@ -15,11 +16,17 @@ from app.models.worker_queue import (
 from app.schemas.worker_queue import WorkerQueueRead
 
 
+def new_execution_id() -> str:
+    return str(uuid4())
+
+
 def worker_queue_to_read(item: WorkerQueueItem) -> WorkerQueueRead:
     return WorkerQueueRead(
         id=item.id,
         job_id=item.job_id,
         job_step_id=item.job_step_id,
+        schedule_id=item.schedule_id,
+        execution_id=item.execution_id,
         status=item.status,
         requested_by=item.requested_by,
         requested_by_user_id=item.requested_by_user_id,
@@ -38,16 +45,6 @@ def worker_queue_to_read(item: WorkerQueueItem) -> WorkerQueueRead:
     )
 
 
-def get_job_steps_ordered(job_id: int, session: Session) -> list[JobStep]:
-    return list(
-        session.exec(
-            select(JobStep)
-            .where(JobStep.job_id == job_id)
-            .order_by(JobStep.order, JobStep.id)
-        ).all()
-    )
-
-
 def get_first_pending_step(job_id: int, session: Session) -> JobStep | None:
     return session.exec(
         select(JobStep)
@@ -57,6 +54,24 @@ def get_first_pending_step(job_id: int, session: Session) -> JobStep | None:
         )
         .order_by(JobStep.order, JobStep.id)
     ).first()
+
+
+def reset_job_steps_for_new_execution(job_id: int, session: Session) -> None:
+    """
+    چون JobStep در این مدل تعریف ثابت step + آخرین وضعیت است،
+    قبل از هر اجرای جدید، stepها reset می‌شوند.
+    History کامل اجرای قبلی در worker_queue باقی می‌ماند.
+    """
+    steps = session.exec(
+        select(JobStep).where(JobStep.job_id == job_id)
+    ).all()
+
+    for step in steps:
+        step.status = JobStatus.PENDING
+        step.started_at = None
+        step.finished_at = None
+        step.log = None
+        session.add(step)
 
 
 def ensure_no_active_queue_for_job(job_id: int, session: Session) -> None:
@@ -76,29 +91,18 @@ def ensure_no_active_queue_for_job(job_id: int, session: Session) -> None:
         )
 
 
-def ensure_no_running_queue(session: Session) -> None:
-    running = session.exec(
-        select(WorkerQueueItem).where(
-            WorkerQueueItem.status == WorkerQueueStatus.RUNNING
-        )
-    ).first()
-
-    if running:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Another worker item is running: {running.id}",
-        )
-
-
 def enqueue_job(
     job_id: int,
     session: Session,
     requested_by_user_id: int | None = None,
     requested_by: WorkerQueueRequestedBy = WorkerQueueRequestedBy.MANUAL,
+    schedule_id: int | None = None,
+    execution_id: str | None = None,
+    reset_steps: bool = True,
 ) -> WorkerQueueItem:
     """
-    اجرای Job را شروع نمی‌کند؛ فقط اولین JobStep آماده آن را وارد worker_queue می‌کند.
-    Worker بعد از موفقیت هر step، step بعدی را enqueue می‌کند.
+    اجرای Job را شروع نمی‌کند؛ فقط اولین JobStep آماده را وارد worker_queue می‌کند.
+    اگر reset_steps=True باشد، قبل از اجرای جدید stepها reset می‌شوند.
     """
     job = session.get(Job, job_id)
     if not job:
@@ -107,13 +111,11 @@ def enqueue_job(
             detail=f"Job not found: {job_id}",
         )
 
-    if job.status == JobStatus.RUNNING:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Job is already running",
-        )
-
     ensure_no_active_queue_for_job(job_id, session)
+
+    if reset_steps:
+        reset_job_steps_for_new_execution(job_id, session)
+        session.flush()
 
     first_step = get_first_pending_step(job_id, session)
     if not first_step:
@@ -132,6 +134,8 @@ def enqueue_job(
     queue_item = WorkerQueueItem(
         job_id=job.id,
         job_step_id=first_step.id,
+        schedule_id=schedule_id,
+        execution_id=execution_id or new_execution_id(),
         status=WorkerQueueStatus.QUEUED,
         requested_by=requested_by,
         requested_by_user_id=requested_by_user_id,
@@ -141,6 +145,9 @@ def enqueue_job(
     )
 
     job.status = JobStatus.PENDING
+    job.started_at = None
+    job.finished_at = None
+    job.error_message = None
     job.updated_at = datetime.utcnow()
 
     session.add(queue_item)
@@ -154,11 +161,11 @@ def enqueue_job(
 def enqueue_next_step_after_success(
     job: Job,
     completed_step: JobStep,
+    completed_queue_item: WorkerQueueItem,
     session: Session,
 ) -> WorkerQueueItem | None:
     """
-    بعد از موفقیت یک step، step بعدی همان job را وارد صف می‌کند.
-    اگر step بعدی وجود نداشته باشد، job را success می‌کند.
+    بعد از موفقیت یک step، step بعدی همان job را با همان execution_id وارد صف می‌کند.
     """
     next_step = session.exec(
         select(JobStep)
@@ -189,6 +196,8 @@ def enqueue_next_step_after_success(
     queue_item = WorkerQueueItem(
         job_id=job.id,
         job_step_id=next_step.id,
+        schedule_id=completed_queue_item.schedule_id,
+        execution_id=completed_queue_item.execution_id,
         status=WorkerQueueStatus.QUEUED,
         requested_by=WorkerQueueRequestedBy.SYSTEM,
         attempt_count=0,
@@ -203,10 +212,22 @@ def enqueue_next_step_after_success(
 def list_worker_queue(
     session: Session,
     status_filter: WorkerQueueStatus | None = None,
+    job_id: int | None = None,
+    execution_id: str | None = None,
+    schedule_id: int | None = None,
 ) -> list[WorkerQueueItem]:
     query = select(WorkerQueueItem).order_by(WorkerQueueItem.id)
 
     if status_filter is not None:
         query = query.where(WorkerQueueItem.status == status_filter)
+
+    if job_id is not None:
+        query = query.where(WorkerQueueItem.job_id == job_id)
+
+    if execution_id is not None:
+        query = query.where(WorkerQueueItem.execution_id == execution_id)
+
+    if schedule_id is not None:
+        query = query.where(WorkerQueueItem.schedule_id == schedule_id)
 
     return list(session.exec(query).all())
