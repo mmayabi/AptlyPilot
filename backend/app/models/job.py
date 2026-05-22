@@ -1,14 +1,13 @@
+# file: app/models/job.py
 from datetime import datetime
 from enum import StrEnum
-from sqlmodel import Field, SQLModel
+from typing import Optional
+from sqlmodel import SQLModel, Field, Column
+from sqlalchemy.dialects.postgresql import JSONB
 
-class JobAction(StrEnum):
-    MIRROR_UPDATE = "mirror_update"
-    SNAPSHOT_CREATE = "snapshot_create"
-    PUBLISH_SWITCH = "publish_switch"
-    CLEANUP = "cleanup"
-    FULL_SYNC = "full_sync"
-
+# ------------------------------
+# Enums
+# ------------------------------
 class JobStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
@@ -22,21 +21,50 @@ class JobTriggerType(StrEnum):
     SCHEDULE = "schedule"
     WEBHOOK = "webhook"
 
+class ScheduleType(StrEnum):
+    MANUAL = "manual"
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+
+# ------------------------------
+# Job Table
+# ------------------------------
 class Job(SQLModel, table=True):
     __tablename__ = "jobs"
 
     id: int | None = Field(default=None, primary_key=True)
+    template_id: int = Field(foreign_key="job_templates.id")
     repo_id: int = Field(foreign_key="repos.id", index=True)
-    action: JobAction = Field(index=True)
     status: JobStatus = Field(default=JobStatus.PENDING, index=True)
     trigger_type: JobTriggerType = Field(default=JobTriggerType.MANUAL)
     triggered_by_user_id: int | None = Field(default=None, foreign_key="users.id")
-    started_at: datetime | None = None
-    finished_at: datetime | None = None
-    error_message: str | None = None
+    scheduled: bool = Field(default=False)
+
+    # اصلاح: زمان اجرا یا schedule_type
+    run_at: Optional[datetime] = Field(default=None, description="next job run (optional)")
+    schedule_type: Optional[ScheduleType] = Field(default=ScheduleType.MANUAL)
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # ستونهای زمان‌بندی اضافه شدند
-    scheduled: bool = Field(default=False)
-    run_at: datetime | None = None  # زمان اجرای بعدی
+# ------------------------------
+# JobStep Table
+# ------------------------------
+class JobStep(SQLModel, table=True):
+    """
+    جدول JobStep: instance واقعی هر Step از یک Job که باید اجرا شود.
+    نگهداری وضعیت step، ترتیب اجرا، پارامترهای واقعی و log اجرای step.
+    """
+    __tablename__ = "job_steps"
+
+    id: int | None = Field(default=None, primary_key=True)
+    job_id: int = Field(foreign_key="jobs.id", index=True)
+    step_template_id: int = Field(foreign_key="job_step_templates.id", index=True)
+    script_id: int = Field(foreign_key="scripts.id")  # کپی script_id برای execution مستقل
+    params: dict | None = Field(default_factory=dict, sa_column=Column(JSONB))  # مقادیر واقعی
+    order: int = Field(default=0)  # ترتیب اجرای step
+    status: JobStatus = Field(default=JobStatus.PENDING, index=True)  # وضعیت step
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    log: str | None = None

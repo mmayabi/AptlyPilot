@@ -36,25 +36,3 @@ def rerun_job(
         "job_id": job.id,
         "current_status": job.status
     }
-
-# ------------------------------
-# ایجاد Job جدید برای یک repo
-# ------------------------------
-@router.post("/create")
-def create_manual_job(
-    repo_id: int,
-    steps: list[dict],
-    session: Session = Depends(get_db_session),
-    current_user: User = Depends(get_current_active_user),
-):
-    if not steps or len(steps) == 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="No steps provided for manual job creation")
-
-    job = create_job(session, repo_id=repo_id, steps=steps, triggered_by_user_id=current_user.id)
-
-    return {
-        "message": f"Manual Job created for repo {repo_id}",
-        "job_id": job.id,
-        "step_count": len(steps)
-    }

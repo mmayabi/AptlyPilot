@@ -1,48 +1,44 @@
 from datetime import datetime
-from pydantic import BaseModel
-from app.models.job import JobAction, JobStatus, JobTriggerType
-from app.models.job_step import JobStep
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+from app.models.job import JobStatus, JobTriggerType, ScheduleType
+
 
 class JobStepRead(BaseModel):
     id: int
-    job_id: int
-    name: str
-    type: str
-    command: str | None
-    action: str | None
-    params: dict | None
+    script_id: int
+    order: int
+    params: dict[str, Any] = Field(default_factory=dict)
     status: JobStatus
-    stdout: str | None
-    stderr: str | None
-    exit_code: int | None
-    started_at: datetime | None
-    finished_at: datetime | None
-    created_at: datetime
-    updated_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    log: str | None = None
 
-    class Config:
-        orm_mode = True
+
+class JobCreate(BaseModel):
+    template_id: int
+    repo_id: int
+    trigger_type: JobTriggerType = JobTriggerType.MANUAL
+    run_at: datetime | None = None
+    schedule_type: ScheduleType = ScheduleType.MANUAL
+    params: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class JobUpdate(BaseModel):
+    trigger_type: JobTriggerType | None = None
+    run_at: datetime | None = None
+    schedule_type: ScheduleType | None = None
 
 
 class JobRead(BaseModel):
     id: int
+    template_id: int
     repo_id: int
-    action: JobAction
     status: JobStatus
     trigger_type: JobTriggerType
-    triggered_by_user_id: int | None
-    started_at: datetime | None
-    finished_at: datetime | None
-    error_message: str | None
-    created_at: datetime
-    updated_at: datetime
-    steps: list[JobStepRead] | None = None  # لیست Stepهای Job
-
-    class Config:
-        orm_mode = True
-
-
-class JobCreateRequest(BaseModel):
-    repo_id: int
-    steps: list[dict]  # هر Step شامل name, type, command/action, params
-    trigger_type: JobTriggerType = JobTriggerType.MANUAL
+    scheduled: bool
+    run_at: datetime | None = None
+    schedule_type: ScheduleType
+    steps: list[JobStepRead] = Field(default_factory=list)

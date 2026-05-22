@@ -22,7 +22,7 @@ dependencies = [
     "PyYAML>=6.0.2",
 
     # scheduler
-    apscheduler>=3.11.2,
+    #apscheduler>=3.11.2,
 ]
 
 [project.optional-dependencies]
