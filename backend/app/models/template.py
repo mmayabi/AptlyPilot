@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from sqlmodel import SQLModel, Field
-from .script import Script
+from app.models.script import Script
 
 # ------------------------------
 # JobTemplate Table

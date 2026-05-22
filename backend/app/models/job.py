@@ -45,6 +45,10 @@ class Job(SQLModel, table=True):
     run_at: Optional[datetime] = Field(default=None, description="next job run (optional)")
     schedule_type: Optional[ScheduleType] = Field(default=ScheduleType.MANUAL)
 
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    error_message: str | None = None
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

@@ -55,6 +55,9 @@ def job_to_read(job: Job, session: Session) -> JobRead:
         scheduled=job.scheduled,
         run_at=job.run_at,
         schedule_type=job.schedule_type,
+        started_at=job.started_at,
+        finished_at=job.finished_at,
+        error_message=job.error_message,
         steps=[
             JobStepRead(
                 id=step.id,

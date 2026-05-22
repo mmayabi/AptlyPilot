@@ -41,4 +41,7 @@ class JobRead(BaseModel):
     scheduled: bool
     run_at: datetime | None = None
     schedule_type: ScheduleType
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    error_message: str | None = None
     steps: list[JobStepRead] = Field(default_factory=list)
