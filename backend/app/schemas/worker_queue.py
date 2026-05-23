@@ -31,6 +31,7 @@ class WorkerQueueRead(BaseModel):
     finished_at: datetime | None = None
 
     timeout_seconds: int
+    log: str | None = None
     error_message: str | None = None
 
     created_at: datetime

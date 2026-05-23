@@ -59,6 +59,7 @@ class WorkerQueueItem(SQLModel, table=True):
     finished_at: datetime | None = None
 
     timeout_seconds: int = Field(default=3600)
+    log: str | None = None
     error_message: str | None = None
 
     created_at: datetime = Field(default_factory=datetime.utcnow)

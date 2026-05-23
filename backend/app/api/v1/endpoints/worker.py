@@ -1,5 +1,3 @@
-# file: app/api/v1/endpoints/worker.py
-
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
@@ -17,7 +15,6 @@ from app.services.worker_service import (
     recover_stale_running_items,
     run_once,
 )
-
 
 router = APIRouter(prefix="/worker", tags=["worker"])
 
@@ -74,6 +71,7 @@ def list_worker_queue_endpoint(
         execution_id=execution_id,
     )
     return [worker_queue_to_read(item) for item in items]
+
 
 @router.post("/recover-stale")
 def recover_stale_worker_items_endpoint(

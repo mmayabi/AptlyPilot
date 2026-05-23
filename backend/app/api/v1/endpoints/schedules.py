@@ -1,5 +1,3 @@
-# file: app/api/v1/endpoints/schedules.py
-
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
@@ -7,11 +5,7 @@ from app.api.deps import get_db_session
 from app.core.permissions import require_admin, require_operator, require_viewer
 from app.models.user import User
 from app.services.scheduler_service import process_due_schedules
-from app.schemas.job_schedule import (
-    JobScheduleCreate,
-    JobScheduleRead,
-    JobScheduleUpdate,
-)
+from app.schemas.job_schedule import JobScheduleCreate, JobScheduleRead, JobScheduleUpdate
 from app.services.job_schedule_service import (
     create_schedule,
     delete_schedule,
@@ -103,6 +97,7 @@ def disable_schedule_endpoint(
 ):
     schedule = disable_schedule(schedule_id, session)
     return schedule_to_read(schedule)
+
 
 @router.post("/test_scheduler")
 def test_scheduler(
