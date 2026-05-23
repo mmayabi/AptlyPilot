@@ -3,7 +3,8 @@ from sqlmodel import Session, select
 from fastapi import HTTPException, status
 from app.models.script import Script
 from app.models.template import JobTemplate, JobStepTemplate
-from app.models.job import Job, JobStatus
+from app.models.job import Job
+from app.models.worker_queue import WorkerQueueItem, WorkerQueueStatus
 from app.schemas.template import JobTemplateCreate, JobTemplateUpdate, JobTemplateRead, JobStepTemplateRead
 from app.models.job import JobStep
 
@@ -47,18 +48,23 @@ def check_template_name_unique(
         )
 
 
-def check_no_running_jobs_for_template(template_id: int, session: Session) -> None:
-    running_job = session.exec(
-        select(Job).where(
+def check_no_active_jobs_for_template(template_id: int, session: Session) -> None:
+    active_item = session.exec(
+        select(WorkerQueueItem)
+        .join(Job, WorkerQueueItem.job_id == Job.id)
+        .where(
             Job.template_id == template_id,
-            Job.status == JobStatus.RUNNING,
+            WorkerQueueItem.status.in_([
+                WorkerQueueStatus.QUEUED,
+                WorkerQueueStatus.RUNNING,
+            ]),
         )
     ).first()
 
-    if running_job:
+    if active_item:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot update template while a job created from this template is running",
+            detail="Cannot update template because a job from this template is queued or running",
         )
 
 
@@ -156,7 +162,7 @@ def update_template(
 ) -> JobTemplate:
     template = get_template_or_404(template_id, session)
 
-    check_no_running_jobs_for_template(template_id, session)
+    check_no_active_jobs_for_template(template_id, session)
 
     if template_in.name is not None and template_in.name != template.name:
         check_template_name_unique(
@@ -218,7 +224,7 @@ def update_template(
         session.flush()
 
         # حالا jobهای pending را با template جدید sync کن
-        sync_pending_jobs_with_template(template_id, session)
+        sync_jobs_with_template(template_id, session)
 
     session.commit()
     session.refresh(template)
@@ -238,30 +244,43 @@ def delete_template(template_id: int, session: Session) -> None:
     session.delete(template)
     session.commit()
 
-# --------------------------
-#وقتی template آپدیت می‌شود:
-#
-#اگر job مرتبط RUNNING باشد → اجازه update template نده.
-#اگر job مرتبط SUCCESS / FAILED / CANCELED / SKIPPED باشد → تغییر نده، چون history است.
-#اگر job مرتبط PENDING باشد → JobStepهایش را با template جدید sync کن.
-# --------------------------
-def sync_pending_jobs_with_template(template_id: int, session: Session) -> None:
+def has_active_worker_queue_for_job(job_id: int, session: Session) -> bool:
     """
-    همگام‌سازی jobهای pending با آخرین نسخه stepهای template.
+    بررسی می‌کند آیا این job در حال حاضر در صف یا در حال اجراست یا نه.
+    چون Job دیگر status اجرایی ندارد، وضعیت اجرا از WorkerQueue خوانده می‌شود.
+    """
+    active_item = session.exec(
+        select(WorkerQueueItem).where(
+            WorkerQueueItem.job_id == job_id,
+            WorkerQueueItem.status.in_([
+                WorkerQueueStatus.QUEUED,
+                WorkerQueueStatus.RUNNING,
+            ]),
+        )
+    ).first()
 
-    فقط Jobهایی که هنوز اجرا نشده‌اند تغییر می‌کنند.
-    Jobهای success/failed/running تغییر نمی‌کنند تا history خراب نشود.
+    return active_item is not None
+
+
+def sync_jobs_with_template(template_id: int, session: Session) -> None:
+    """
+    همگام‌سازی JobStepهای Jobهای ساخته‌شده از یک Template با آخرین نسخه JobStepTemplateها.
+
+    نکته:
+    - Job و JobStep دیگر runtime state ندارند.
+    - history اجرا در WorkerQueue است.
+    - اگر job در صف یا در حال اجرا باشد، sync نمی‌شود تا اجرای جاری خراب نشود.
     """
     template_steps = get_template_steps(template_id, session)
 
-    pending_jobs = session.exec(
-        select(Job).where(
-            Job.template_id == template_id,
-            Job.status == JobStatus.PENDING,
-        )
+    jobs = session.exec(
+        select(Job).where(Job.template_id == template_id)
     ).all()
 
-    for job in pending_jobs:
+    for job in jobs:
+        if has_active_worker_queue_for_job(job.id, session):
+            continue
+
         existing_job_steps = session.exec(
             select(JobStep).where(JobStep.job_id == job.id)
         ).all()
@@ -285,6 +304,7 @@ def sync_pending_jobs_with_template(template_id: int, session: Session) -> None:
             if existing_job_step:
                 existing_job_step.script_id = template_step.script_id
                 existing_job_step.order = template_step.order
+                # params را دست نمی‌زنیم چون ممکن است مقادیر واقعی job باشند
                 session.add(existing_job_step)
             else:
                 session.add(
@@ -294,7 +314,6 @@ def sync_pending_jobs_with_template(template_id: int, session: Session) -> None:
                         script_id=template_step.script_id,
                         order=template_step.order,
                         params={},
-                        status=JobStatus.PENDING,
                     )
                 )
 

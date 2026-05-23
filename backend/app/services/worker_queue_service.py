@@ -122,3 +122,30 @@ def enqueue_next_step_after_success(
     session.add(queue_item)
     session.commit()
     return queue_item
+
+def list_worker_queue(
+    session: Session,
+    status_filter: WorkerQueueStatus | None = None,
+    job_id: int | None = None,
+    execution_id: str | None = None,
+    schedule_id: int | None = None,
+    requested_by: WorkerQueueRequestedBy | None = None,
+) -> list[WorkerQueueItem]:
+    query = select(WorkerQueueItem).order_by(WorkerQueueItem.id)
+
+    if status_filter is not None:
+        query = query.where(WorkerQueueItem.status == status_filter)
+
+    if job_id is not None:
+        query = query.where(WorkerQueueItem.job_id == job_id)
+
+    if execution_id is not None:
+        query = query.where(WorkerQueueItem.execution_id == execution_id)
+
+    if schedule_id is not None:
+        query = query.where(WorkerQueueItem.schedule_id == schedule_id)
+
+    if requested_by is not None:
+        query = query.where(WorkerQueueItem.requested_by == requested_by)
+
+    return list(session.exec(query).all())
