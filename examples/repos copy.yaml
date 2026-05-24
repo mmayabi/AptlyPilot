@@ -1,0 +1,83 @@
+defaults:
+  snapshot:
+    enabled: true
+    naming: "{name}-{timestamp}"
+    timestamp_format: "%Y%m%d-%H%M"
+
+  publish:
+    endpoint: "filesystem:repo"
+    gpg_key: ABCDEF12
+    skip_signing: false
+    acquire_by_hash: true
+    skip_bz2: true
+    skip_contents: true
+    
+  test:
+    enabled: true
+    checks:
+      - metadata
+
+  retention:
+    keep_last: 7
+
+repos:
+  ubuntu-jammy:
+    ubuntu-jammy-update:
+      enabled: true
+      mirror:
+        archive_url: http://archive.ubuntu.com/ubuntu
+        distribution: jammy-update
+        components: [main]
+        architectures: [amd64,i386]
+
+      publish:
+        prefix: ubuntu
+        distribution: jammy-update
+        components: [main]
+        architectures: [amd64,i386]
+        label: Ubuntu
+        origin: Ubuntu
+        codename: jammy-update
+        suite: jammy-update
+
+    ubuntu-jammy-main:
+      enabled: true
+      mirror:
+        archive_url: http://archive.ubuntu.com/ubuntu
+        distribution: jammy
+        components: [main]
+        architectures: [amd64,i386]
+
+      publish:
+        prefix: ubuntu
+        distribution: jammy
+        components: [main]
+        architectures: [amd64,i386]
+        label: Ubuntu
+        origin: Ubuntu
+        codename: jammy
+        suite: jammy
+      retention:
+        keep_last: 10
+
+  debian-bookworm:
+    debian-bookworm-main:
+      enabled: true
+      mirror:
+        archive_url: http://deb.debian.org/debian
+        distribution: bookworm
+        components: [main]
+        architectures: [amd64]
+
+      publish:
+        prefix: debian
+        distribution: bookworm
+        components: [main]
+        architectures: [amd64]
+        label: Debian
+        origin: Debian
+        codename: bookworm
+        suite: bookworm
+
+      retention:
+        keep_last: 14

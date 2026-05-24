@@ -26,6 +26,12 @@ class Settings(BaseSettings):
 
     REPOS_CONFIG_PATH: str = "/app/examples/repos.yaml"
 
+    # Aptly api connection settings
+    APTLY_API_URL: str = "http://127.0.0.1:8080"
+    APTLY_API_USERNAME: str | None = None
+    APTLY_API_PASSWORD: str | None = None
+    APTLY_API_TOKEN: str | None = None
+
     # مسیرهای داخلی پروژه
     APP_DIR: Path = Path(__file__).resolve().parent
     PROJECT_ROOT: Path = APP_DIR.parent
