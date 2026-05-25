@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import time
 from typing import Any
+from urllib.parse import quote
 
 import requests
 
@@ -73,25 +75,727 @@ class AptlyClient:
             raise AptlyAPIError("Unexpected response from /api/mirrors. Expected list.")
 
         return data
-    
+
     def list_snapshots(self) -> list[dict[str, Any]]:
         data = self.request("GET", "/api/snapshots")
-    
+
         if data is None:
             return []
-    
+
         if not isinstance(data, list):
             raise AptlyAPIError("Unexpected response from /api/snapshots. Expected list.")
-    
+
         return data
-    
+
     def list_publishes(self) -> list[dict[str, Any]]:
         data = self.request("GET", "/api/publish")
-    
+
         if data is None:
             return []
-    
+
         if not isinstance(data, list):
             raise AptlyAPIError("Unexpected response from /api/publish. Expected list.")
-    
+
         return data
+
+    # -----------------------------
+    # Task helpers
+    # -----------------------------
+
+    def get_task(self, task_id: int | str) -> dict[str, Any]:
+        data = self.request("GET", f"/api/tasks/{task_id}")
+
+        if not isinstance(data, dict):
+            raise AptlyAPIError(f"Unexpected response from /api/tasks/{task_id}")
+
+        return data
+
+    def get_task_return_value(self, task_id: int | str) -> Any:
+        return self.request("GET", f"/api/tasks/{task_id}/return_value")
+
+    def get_task_output(self, task_id: int | str) -> str:
+        data = self.request("GET", f"/api/tasks/{task_id}/output")
+
+        if data is None:
+            return ""
+
+        if isinstance(data, str):
+            return data
+
+        return str(data)
+
+    def wait_task(
+        self,
+        task_id: int | str,
+        poll_interval: int = 5,
+        max_wait_seconds: int = 3600,
+        terminal_states: set[int] | None = None,
+    ) -> dict[str, Any]:
+        """
+        منتظر پایان task می‌ماند.
+
+        نکته:
+        در نمونه‌ای که خودت از Aptly دادی، State=3 یعنی task تمام شده است.
+        برای همین مقدار پیش‌فرض terminal_states برابر {3} است.
+        """
+
+        if terminal_states is None:
+            terminal_states = {3}
+
+        started_at = time.monotonic()
+
+        while True:
+            task = self.get_task(task_id)
+            state = task.get("State")
+
+            if state in terminal_states:
+                return_value = self.get_task_return_value(task_id)
+                output = self.get_task_output(task_id)
+
+                result = {
+                    "task_id": task_id,
+                    "task": task,
+                    "return_value": return_value,
+                    "output": output,
+                }
+
+                code = None
+                if isinstance(return_value, dict):
+                    code = return_value.get("Code")
+
+                if code is not None and int(code) >= 400:
+                    raise AptlyAPIError(
+                        f"Aptly task {task_id} failed with code {code}:\n{output}"
+                    )
+
+                return result
+
+            if time.monotonic() - started_at > max_wait_seconds:
+                raise AptlyAPIError(
+                    f"Timeout waiting for Aptly task {task_id}. Last task state: {task}"
+                )
+
+            time.sleep(poll_interval)
+
+    # -----------------------------
+    # Mirror update
+    # -----------------------------
+    def update_mirror(
+        self,
+        mirror_name: str,
+        *,
+        run_async: bool = False,
+        wait: bool = True,
+        force_update: bool = False,
+        ignore_signatures: bool | None = None,
+        skip_existing_packages: bool | None = None,
+        max_tries: int | None = None,
+        poll_interval: int = 5,
+        max_wait_seconds: int = 3600,
+    ) -> dict[str, Any]:
+        """
+        اجرای mirror update.
+
+        حالت‌ها:
+        1. run_async=False
+           درخواست به شکل sync اجرا می‌شود و Aptly همان‌جا منتظر پایان update می‌ماند.
+
+        2. run_async=True, wait=False
+           Aptly task را background اجرا می‌کند و فقط task_id برمی‌گردد.
+
+        3. run_async=True, wait=True
+           task به شکل async در Aptly شروع می‌شود، اما این متد خودش task را poll می‌کند
+           و بعد از پایان نتیجه، output و return_value را برمی‌گرداند.
+        """
+
+        safe_name = quote(mirror_name, safe="")
+        params: dict[str, str] = {}
+
+        if run_async:
+            params["_async"] = "1"
+
+        body: dict[str, Any] = {}
+
+        if force_update:
+            body["ForceUpdate"] = True
+
+        if ignore_signatures is not None:
+            body["IgnoreSignatures"] = ignore_signatures
+
+        if skip_existing_packages is not None:
+            body["SkipExistingPackages"] = skip_existing_packages
+
+        if max_tries is not None:
+            body["MaxTries"] = max_tries
+
+        data = self.request(
+            "PUT",
+            f"/api/mirrors/{safe_name}",
+            params=params,
+            json=body,
+        )
+
+        if not run_async:
+            return {
+                "mode": "sync",
+                "mirror_name": mirror_name,
+                "result": data,
+            }
+
+        task_id = self._extract_task_id(data)
+
+        if not wait:
+            return {
+                "mode": "async",
+                "mirror_name": mirror_name,
+                "task_id": task_id,
+                "task": data,
+            }
+
+        task_result = self.wait_task(
+            task_id=task_id,
+            poll_interval=poll_interval,
+            max_wait_seconds=max_wait_seconds,
+        )
+
+        return {
+            "mode": "async_wait",
+            "mirror_name": mirror_name,
+            **task_result,
+        }
+
+    def _extract_task_id(self, data: Any) -> int | str:
+        """
+        استخراج task id از پاسخ Aptly.
+
+        بسته به نسخه/پیاده‌سازی Aptly، پاسخ async ممکن است یکی از این شکل‌ها باشد:
+        {"ID": 123, ...}
+        {"TaskID": 123}
+        123
+        """
+
+        if isinstance(data, int):
+            return data
+
+        if isinstance(data, str) and data.strip():
+            return data
+
+        if isinstance(data, dict):
+            for key in ("ID", "TaskID", "task_id", "id"):
+                if key in data:
+                    return data[key]
+
+        raise AptlyAPIError(f"Cannot extract task id from Aptly response: {data}")
+    
+    # -----------------------------
+    # Snapshot Create from Mirror
+    # -----------------------------
+    def get_snapshot(self, snapshot_name: str) -> dict[str, Any]:
+        safe_name = quote(snapshot_name, safe="")
+        data = self.request("GET", f"/api/snapshots/{safe_name}")
+
+        if not isinstance(data, dict):
+            raise AptlyAPIError(
+                f"Unexpected response from /api/snapshots/{snapshot_name}. Expected dict."
+            )
+
+        return data
+
+    def snapshot_exists(self, snapshot_name: str) -> bool:
+        try:
+            self.get_snapshot(snapshot_name)
+            return True
+        except AptlyAPIError as exc:
+            if "404" in str(exc):
+                return False
+            raise
+
+    def create_snapshot_from_mirror(
+        self,
+        mirror_name: str,
+        snapshot_name: str,
+        *,
+        description: str | None = None,
+        fail_if_exists: bool = True,
+        run_async: bool = False,
+        wait: bool = True,
+        poll_interval: int = 5,
+        max_wait_seconds: int = 3600,
+    ) -> dict[str, Any]:
+        """
+        ساخت snapshot از mirror.
+
+        معادل CLI:
+
+            aptly snapshot create <snapshot_name> from mirror <mirror_name>
+
+        پارامتر fail_if_exists:
+        - اگر True باشد و snapshot از قبل وجود داشته باشد، خطا می‌دهد.
+        - اگر False باشد و snapshot وجود داشته باشد، همان snapshot موجود را برمی‌گرداند.
+        """
+
+        if self.snapshot_exists(snapshot_name):
+            existing_snapshot = self.get_snapshot(snapshot_name)
+
+            if fail_if_exists:
+                raise AptlyAPIError(
+                    f"Snapshot already exists: {snapshot_name}"
+                )
+
+            return {
+                "mode": "exists",
+                "mirror_name": mirror_name,
+                "snapshot_name": snapshot_name,
+                "snapshot": existing_snapshot,
+                "created": False,
+            }
+
+        safe_mirror_name = quote(mirror_name, safe="")
+
+        params: dict[str, str] = {}
+        if run_async:
+            params["_async"] = "1"
+
+        body: dict[str, Any] = {
+            "Name": snapshot_name,
+        }
+
+        if description:
+            body["Description"] = description
+
+        try:
+            data = self.request(
+                "POST",
+                f"/api/mirrors/{safe_mirror_name}/snapshots",
+                params=params,
+                json=body,
+            )
+        except AptlyAPIError as exc:
+            # برای حالت race condition:
+            # ممکن است بین snapshot_exists و POST، یک worker دیگر snapshot را ساخته باشد.
+            if "already exists" in str(exc).lower() or "409" in str(exc):
+                if fail_if_exists:
+                    raise AptlyAPIError(
+                        f"Snapshot already exists: {snapshot_name}"
+                    ) from exc
+
+                existing_snapshot = self.get_snapshot(snapshot_name)
+
+                return {
+                    "mode": "exists",
+                    "mirror_name": mirror_name,
+                    "snapshot_name": snapshot_name,
+                    "snapshot": existing_snapshot,
+                    "created": False,
+                }
+
+            raise
+
+        if not run_async:
+            return {
+                "mode": "sync",
+                "mirror_name": mirror_name,
+                "snapshot_name": snapshot_name,
+                "snapshot": data,
+                "created": True,
+            }
+
+        task_id = self._extract_task_id(data)
+
+        if not wait:
+            return {
+                "mode": "async",
+                "mirror_name": mirror_name,
+                "snapshot_name": snapshot_name,
+                "task_id": task_id,
+                "task": data,
+                "created": None,
+            }
+
+        task_result = self.wait_task(
+            task_id=task_id,
+            poll_interval=poll_interval,
+            max_wait_seconds=max_wait_seconds,
+        )
+
+        return {
+            "mode": "async_wait",
+            "mirror_name": mirror_name,
+            "snapshot_name": snapshot_name,
+            "created": True,
+            **task_result,
+        }
+
+    # -----------------------------
+    # Publish
+    # -----------------------------
+    def _encode_publish_prefix(self, prefix: str | None) -> str:
+        """
+        تبدیل publish prefix به فرم قابل استفاده در URL مربوط به Aptly.
+
+        طبق مستندات Aptly:
+        - root prefix باید با :. مشخص شود.
+        - اگر prefix شامل / باشد، باید / به _ تبدیل شود.
+        - اگر prefix شامل _ باشد، باید _ به __ تبدیل شود.
+
+        مثال‌ها:
+            "." یا "" یا None  -> ":."
+            "debian/security" -> "debian_security"
+            "my_repo"         -> "my__repo"
+            "filesystem:repo" -> "filesystem:repo"
+        """
+
+        if prefix is None or prefix == "" or prefix == ".":
+            return ":."
+
+        # ترتیب مهم است: اول underscore را escape می‌کنیم، بعد slash را تبدیل می‌کنیم.
+        encoded = prefix.replace("_", "__").replace("/", "_")
+
+        return quote(encoded, safe=":")
+
+    def _find_publish(
+        self,
+        *,
+        prefix: str | None,
+        distribution: str,
+    ) -> dict[str, Any] | None:
+        """
+        publish موجود را از خروجی /api/publish پیدا می‌کند.
+
+        چون GET /api/publish/:prefix/:distribution در مستندات legacy به شکل واضح
+        نیامده، امن‌ترین راه این است که list_publishes را بگیریم و فیلتر کنیم.
+        """
+
+        normalized_prefix = prefix or "."
+
+        for item in self.list_publishes():
+            item_prefix = item.get("Prefix") or "."
+            item_distribution = item.get("Distribution")
+
+            if item_prefix == normalized_prefix and item_distribution == distribution:
+                return item
+
+        return None
+
+    def publish_exists(
+        self,
+        *,
+        prefix: str | None,
+        distribution: str,
+    ) -> bool:
+        return self._find_publish(
+            prefix=prefix,
+            distribution=distribution,
+        ) is not None
+
+    def publish_snapshot(
+        self,
+        *,
+        snapshot_name: str,
+        prefix: str | None = ".",
+        distribution: str | None = None,
+        component: str = "main",
+        architectures: list[str] | None = None,
+        label: str | None = None,
+        origin: str | None = None,
+        force_overwrite: bool = False,
+        skip_cleanup: bool = False,
+        acquire_by_hash: bool | None = None,
+        multi_dist: bool | None = None,
+        not_automatic: str | None = None,
+        but_automatic_upgrades: str | None = None,
+        signing: dict[str, Any] | None = None,
+        fail_if_exists: bool = True,
+    ) -> dict[str, Any]:
+        """
+        publish کردن snapshot برای اولین بار.
+
+        معادل تقریبی CLI:
+
+            aptly publish snapshot \
+              -component=<component> \
+              -distribution=<distribution> \
+              <snapshot_name> <prefix>
+
+        اگر publish با prefix + distribution از قبل وجود داشته باشد:
+        - fail_if_exists=True  -> خطا
+        - fail_if_exists=False -> publish موجود را برمی‌گرداند
+        """
+
+        if distribution and self.publish_exists(prefix=prefix, distribution=distribution):
+            existing = self._find_publish(prefix=prefix, distribution=distribution)
+
+            if fail_if_exists:
+                raise AptlyAPIError(
+                    f"Published repository already exists: "
+                    f"prefix={prefix or '.'}, distribution={distribution}"
+                )
+
+            return {
+                "mode": "exists",
+                "created": False,
+                "prefix": prefix or ".",
+                "distribution": distribution,
+                "publish": existing,
+            }
+
+        encoded_prefix = self._encode_publish_prefix(prefix)
+
+        body: dict[str, Any] = {
+            "SourceKind": "snapshot",
+            "Sources": [
+                {
+                    "Name": snapshot_name,
+                    "Component": component,
+                }
+            ],
+            "ForceOverwrite": force_overwrite,
+        }
+
+        if distribution:
+            body["Distribution"] = distribution
+
+        if architectures:
+            body["Architectures"] = architectures
+
+        if label is not None:
+            body["Label"] = label
+
+        if origin is not None:
+            body["Origin"] = origin
+
+        if skip_cleanup:
+            body["SkipCleanup"] = True
+
+        if acquire_by_hash is not None:
+            body["AcquireByHash"] = acquire_by_hash
+
+        if multi_dist is not None:
+            body["MultiDist"] = multi_dist
+
+        if not_automatic is not None:
+            body["NotAutomatic"] = not_automatic
+
+        if but_automatic_upgrades is not None:
+            body["ButAutomaticUpgrades"] = but_automatic_upgrades
+
+        if signing is not None:
+            body["Signing"] = signing
+
+        try:
+            data = self.request(
+                "POST",
+                f"/api/publish/{encoded_prefix}",
+                json=body,
+            )
+        except AptlyAPIError as exc:
+            # race condition یا publish قبلی
+            if "already" in str(exc).lower() or "400" in str(exc):
+                if distribution and not fail_if_exists:
+                    existing = self._find_publish(
+                        prefix=prefix,
+                        distribution=distribution,
+                    )
+
+                    if existing:
+                        return {
+                            "mode": "exists",
+                            "created": False,
+                            "prefix": prefix or ".",
+                            "distribution": distribution,
+                            "publish": existing,
+                        }
+
+            raise
+
+        return {
+            "mode": "publish",
+            "created": True,
+            "prefix": prefix or ".",
+            "distribution": distribution,
+            "snapshot_name": snapshot_name,
+            "publish": data,
+        }
+
+    def switch_published_snapshot(
+        self,
+        *,
+        snapshot_name: str,
+        prefix: str | None = ".",
+        distribution: str,
+        component: str = "main",
+        force_overwrite: bool = False,
+        acquire_by_hash: bool | None = None,
+        multi_dist: bool | None = None,
+        signing: dict[str, Any] | None = None,
+        fail_if_missing: bool = True,
+    ) -> dict[str, Any]:
+        """
+        تغییر publish موجود به snapshot جدید.
+
+        معادل تقریبی CLI:
+
+            aptly publish switch <distribution> <prefix> <snapshot_name>
+
+        این متد برای زمانی است که publish قبلاً وجود دارد.
+        """
+
+        existing = self._find_publish(
+            prefix=prefix,
+            distribution=distribution,
+        )
+
+        if existing is None:
+            if fail_if_missing:
+                raise AptlyAPIError(
+                    f"Published repository does not exist: "
+                    f"prefix={prefix or '.'}, distribution={distribution}"
+                )
+
+            return {
+                "mode": "missing",
+                "updated": False,
+                "prefix": prefix or ".",
+                "distribution": distribution,
+                "publish": None,
+            }
+
+        if existing.get("SourceKind") != "snapshot":
+            raise AptlyAPIError(
+                f"Published repository is not snapshot-based: "
+                f"prefix={prefix or '.'}, distribution={distribution}, "
+                f"source_kind={existing.get('SourceKind')}"
+            )
+
+        encoded_prefix = self._encode_publish_prefix(prefix)
+        encoded_distribution = quote(distribution, safe="")
+
+        body: dict[str, Any] = {
+            "Snapshots": [
+                {
+                    "Name": snapshot_name,
+                    "Component": component,
+                }
+            ],
+            "ForceOverwrite": force_overwrite,
+        }
+
+        if acquire_by_hash is not None:
+            body["AcquireByHash"] = acquire_by_hash
+
+        if multi_dist is not None:
+            body["MultiDist"] = multi_dist
+
+        if signing is not None:
+            body["Signing"] = signing
+
+        data = self.request(
+            "PUT",
+            f"/api/publish/{encoded_prefix}/{encoded_distribution}",
+            json=body,
+        )
+
+        return {
+            "mode": "switch",
+            "updated": True,
+            "prefix": prefix or ".",
+            "distribution": distribution,
+            "snapshot_name": snapshot_name,
+            "publish": data,
+        }
+
+    def publish_or_switch_snapshot(
+        self,
+        *,
+        snapshot_name: str,
+        prefix: str | None = ".",
+        distribution: str,
+        component: str = "main",
+        architectures: list[str] | None = None,
+        label: str | None = None,
+        origin: str | None = None,
+        force_overwrite: bool = False,
+        skip_cleanup: bool = False,
+        acquire_by_hash: bool | None = None,
+        multi_dist: bool | None = None,
+        not_automatic: str | None = None,
+        but_automatic_upgrades: str | None = None,
+        signing: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        اگر publish وجود نداشت، publish می‌کند.
+        اگر publish وجود داشت، آن را به snapshot جدید switch می‌کند.
+
+        این متد برای job اصلی پروژه مناسب‌تر است.
+        """
+
+        existing = self._find_publish(
+            prefix=prefix,
+            distribution=distribution,
+        )
+
+        if existing is None:
+            return self.publish_snapshot(
+                snapshot_name=snapshot_name,
+                prefix=prefix,
+                distribution=distribution,
+                component=component,
+                architectures=architectures,
+                label=label,
+                origin=origin,
+                force_overwrite=force_overwrite,
+                skip_cleanup=skip_cleanup,
+                acquire_by_hash=acquire_by_hash,
+                multi_dist=multi_dist,
+                not_automatic=not_automatic,
+                but_automatic_upgrades=but_automatic_upgrades,
+                signing=signing,
+                fail_if_exists=True,
+            )
+
+        return self.switch_published_snapshot(
+            snapshot_name=snapshot_name,
+            prefix=prefix,
+            distribution=distribution,
+            component=component,
+            force_overwrite=force_overwrite,
+            acquire_by_hash=acquire_by_hash,
+            multi_dist=multi_dist,
+            signing=signing,
+            fail_if_missing=True,
+        )
+
+    def drop_publish(
+        self,
+        *,
+        prefix: str | None = ".",
+        distribution: str,
+        force: bool = False,
+    ) -> dict[str, Any]:
+        """
+        حذف published repository.
+
+        معادل تقریبی CLI:
+
+            aptly publish drop <distribution> <prefix>
+        """
+
+        encoded_prefix = self._encode_publish_prefix(prefix)
+        encoded_distribution = quote(distribution, safe="")
+
+        params: dict[str, str] = {}
+        if force:
+            params["force"] = "1"
+
+        data = self.request(
+            "DELETE",
+            f"/api/publish/{encoded_prefix}/{encoded_distribution}",
+            params=params,
+        )
+
+        return {
+            "prefix": prefix or ".",
+            "distribution": distribution,
+            "dropped": True,
+            "result": data,
+        }
