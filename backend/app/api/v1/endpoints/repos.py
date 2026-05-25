@@ -1,22 +1,39 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session
 
 from app.api.deps import get_db_session
 from app.core.permissions import require_admin, require_operator, require_viewer
 from app.models.user import User
 from app.schemas.repo import ConfigValidationResponse, RepoRead, RepoConfigRead, RepoSyncResponse
-from app.services.repo_service import get_all_repos, get_repo_or_none, get_repo_config, validate_config_file, sync_repos_from_config, repo_to_read
+from app.services.repo_service import (
+    get_all_repos,
+    get_repo_config,
+    get_repo_or_none,
+    get_repos_by_provider,
+    get_repos_by_provider_release,
+    repo_to_read,
+    sync_repos_from_config,
+    validate_config_file,
+)
 
 router = APIRouter(prefix="/repos", tags=["repos"])
 
 
 @router.get("", response_model=list[RepoRead])
 def list_repositories(
+    provider: str | None = Query(default=None),
+    release: str | None = Query(default=None),
     session: Session = Depends(get_db_session),
     current_user: User = Depends(require_viewer),
 ):
-    repos = get_all_repos(session)
-    return [repo_to_read(r) for r in repos]
+    if provider and release:
+        repos = get_repos_by_provider_release(session, provider, release)
+    elif provider:
+        repos = get_repos_by_provider(session, provider)
+    else:
+        repos = get_all_repos(session)
+
+    return [repo_to_read(repo) for repo in repos]
 
 
 @router.get("/{repo_name}", response_model=RepoRead)
@@ -27,7 +44,10 @@ def read_repository(
 ):
     repo = get_repo_or_none(session, repo_name)
     if not repo:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Repository not found: {repo_name}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Repository not found: {repo_name}",
+        )
     return repo_to_read(repo)
 
 
@@ -39,7 +59,10 @@ def read_repository_config(
 ):
     repo_config = get_repo_config(session, repo_name)
     if not repo_config:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Repository not found: {repo_name}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Repository not found: {repo_name}",
+        )
     return repo_config
 
 
@@ -55,5 +78,8 @@ def sync_repositories_from_config(
 ):
     result = validate_config_file()
     if not result.valid:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"message": "Invalid repository config", "errors": result.errors})
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": "Invalid repository config", "errors": result.errors},
+        )
     return sync_repos_from_config(session)
