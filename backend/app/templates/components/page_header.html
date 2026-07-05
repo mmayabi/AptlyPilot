@@ -1,0 +1,81 @@
+<div class="mb-8">
+
+    <div class="flex items-start justify-between">
+
+        <div>
+
+            <h1 class="text-3xl font-bold text-slate-900">
+
+                {{ title }}
+
+            </h1>
+
+            {% if subtitle %}
+
+            <p class="mt-2 text-slate-500">
+
+                {{ subtitle }}
+
+            </p>
+
+            {% endif %}
+
+        </div>
+
+        {% if actions %}
+
+        <div class="flex items-center gap-3">
+
+            {% for action in actions %}
+
+                {% if action.href %}
+
+                <a
+                    href="{{ action.href }}"
+                    class="{{ action.class|default('bg-blue-600 hover:bg-blue-700 text-white') }} rounded-lg px-5 py-2 font-medium">
+
+                    {{ action.icon|default("") }}
+
+                    {{ action.label }}
+
+                </a>
+
+                {% else %}
+
+                <button
+
+                    {% if action.hx_get %}
+                    hx-get="{{ action.hx_get }}"
+                    {% endif %}
+
+                    {% if action.hx_post %}
+                    hx-post="{{ action.hx_post }}"
+                    {% endif %}
+
+                    {% if action.hx_target %}
+                    hx-target="{{ action.hx_target }}"
+                    {% endif %}
+
+                    {% if action.hx_swap %}
+                    hx-swap="{{ action.hx_swap }}"
+                    {% endif %}
+
+                    class="{{ action.class|default('bg-blue-600 hover:bg-blue-700 text-white') }} rounded-lg px-5 py-2 font-medium">
+
+                    {{ action.icon|default("") }}
+
+                    {{ action.label }}
+
+                </button>
+
+                {% endif %}
+
+            {% endfor %}
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>

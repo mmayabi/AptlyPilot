@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session
 
@@ -14,6 +14,7 @@ settings = get_settings()
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_PREFIX}/auth/login",
+    auto_error=False,
 )
 
 
@@ -21,8 +22,58 @@ def get_db_session() -> Generator[Session, None, None]:
     yield from get_session()
 
 
+#def get_access_token(
+#    request: Request,
+#    bearer_token: str | None = Depends(oauth2_scheme),
+#) -> str:
+#
+#    if bearer_token:
+#        return bearer_token
+#
+#    cookie_token = request.cookies.get("access_token")
+#
+#    if cookie_token:
+#        return cookie_token
+#
+#    raise HTTPException(
+#        status_code=status.HTTP_401_UNAUTHORIZED,
+#        detail="Not authenticated",
+#        headers={"WWW-Authenticate": "Bearer"},
+#    )
+def get_access_token(
+    request: Request,
+    bearer_token: str | None = Depends(oauth2_scheme),
+) -> str:
+
+    print("=" * 80)
+    print("Headers:")
+    print(request.headers)
+
+    print("=" * 80)
+    print("Cookies:")
+    print(request.cookies)
+
+    print("=" * 80)
+
+    if bearer_token:
+        print("Bearer Token")
+        return bearer_token
+
+    cookie_token = request.cookies.get("access_token")
+
+    if cookie_token:
+        print("Cookie Token Found")
+        return cookie_token
+
+    print("NO TOKEN")
+
+    raise HTTPException(
+        status_code=401,
+        detail="Not authenticated",
+    )
+
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(get_access_token),
     session: Session = Depends(get_db_session),
 ) -> User:
     credentials_exception = HTTPException(

@@ -1,0 +1,45 @@
+<header class="bg-white border-b h-16 flex items-center justify-between px-8">
+
+    <div>
+
+        {% include "components/breadcrumb.html" %}
+
+    </div>
+
+    <div class="flex items-center gap-5">
+
+        <button class="text-slate-600 hover:text-blue-600">
+            🔔
+        </button>
+
+        <button class="text-slate-600 hover:text-blue-600">
+            🌙
+        </button>
+
+        <div class="flex items-center gap-3">
+
+            <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
+                {{ current_user.username[0]|upper }}
+            </div>
+
+            <div>
+
+                <div class="font-medium">
+
+                    {{ current_user.username }}
+
+                </div>
+
+                <div class="text-xs text-slate-500">
+
+                    Administrator
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</header>

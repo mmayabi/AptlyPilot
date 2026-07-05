@@ -1,0 +1,215 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Sign in | AptlyPilot{% endblock %}
+
+{% block body %}
+
+<div class="min-h-screen grid lg:grid-cols-2 bg-slate-100">
+
+    <!-- Left -->
+
+    <div class="flex items-center justify-center p-8">
+
+        <div class="w-full max-w-md">
+
+            <div class="mb-10">
+
+                <div class="flex items-center gap-3 mb-4">
+
+                    <div class="h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl">
+                        AP
+                    </div>
+
+                    <div>
+
+                        <h1 class="text-3xl font-bold text-slate-900">
+                            AptlyPilot
+                        </h1>
+
+                        <p class="text-slate-500">
+                            Enterprise Repository Management
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% if request.query_params.get("error") %}
+
+            <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+
+                <p class="text-red-700 text-sm">
+
+                    Invalid username or password.
+
+                </p>
+
+            </div>
+
+            {% endif %}
+
+            <form
+                action="/login"
+                method="post"
+                class="space-y-6">
+
+                <div>
+
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+
+                        Username
+
+                    </label>
+
+                    <input
+                        type="text"
+                        name="username"
+                        required
+                        autofocus
+                        autocomplete="username"
+                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none">
+
+                </div>
+
+                <div>
+
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+
+                        Password
+
+                    </label>
+
+                    <input
+                        type="password"
+                        name="password"
+                        required
+                        autocomplete="current-password"
+                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none">
+
+                </div>
+
+                <button
+                    type="submit"
+                    class="w-full rounded-lg bg-blue-600 py-3 text-white font-medium hover:bg-blue-700 transition">
+
+                    Sign In
+
+                </button>
+
+            </form>
+
+            <div class="mt-8 text-center text-sm text-slate-500">
+
+                AptlyPilot © 2026
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Right -->
+
+    <div class="hidden lg:flex bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900">
+
+        <div class="m-auto max-w-lg px-12 text-white">
+
+            <div class="inline-flex rounded-full bg-white/10 px-4 py-2 text-sm mb-8">
+
+                Enterprise Edition
+
+            </div>
+
+            <h2 class="text-5xl font-bold leading-tight mb-6">
+
+                Repository Management
+                <br>
+                Made Simple
+
+            </h2>
+
+            <p class="text-lg text-slate-300 leading-8 mb-10">
+
+                Manage Aptly repositories, providers, releases,
+                snapshots and synchronization jobs from one
+                modern control panel.
+
+            </p>
+
+            <div class="grid grid-cols-2 gap-6">
+
+                <div class="rounded-xl bg-white/10 p-5">
+
+                    <div class="text-3xl font-bold">
+
+                        100%
+
+                    </div>
+
+                    <div class="text-slate-300 mt-2">
+
+                        Repository Visibility
+
+                    </div>
+
+                </div>
+
+                <div class="rounded-xl bg-white/10 p-5">
+
+                    <div class="text-3xl font-bold">
+
+                        HA
+
+                    </div>
+
+                    <div class="text-slate-300 mt-2">
+
+                        Enterprise Ready
+
+                    </div>
+
+                </div>
+
+                <div class="rounded-xl bg-white/10 p-5">
+
+                    <div class="text-3xl font-bold">
+
+                        API
+
+                    </div>
+
+                    <div class="text-slate-300 mt-2">
+
+                        Fully Integrated
+
+                    </div>
+
+                </div>
+
+                <div class="rounded-xl bg-white/10 p-5">
+
+                    <div class="text-3xl font-bold">
+
+                        RBAC
+
+                    </div>
+
+                    <div class="text-slate-300 mt-2">
+
+                        Secure Access Control
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

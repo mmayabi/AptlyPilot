@@ -21,6 +21,9 @@ dependencies = [
 
     # Config
     "PyYAML>=6.0.2",
+
+    # UI 
+    "jinja2>=3.1.6",
 ]
 
 [project.optional-dependencies]

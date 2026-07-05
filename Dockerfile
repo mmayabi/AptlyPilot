@@ -6,17 +6,11 @@ ENV PYTHONPATH=/app
 
 WORKDIR /app
 
-RUN export http_proxy="http://172.20.8.33:20171" && \
-    export https_proxy="http://172.20.8.33:20171" && \
-    pip install --no-cache-dir --upgrade pip && \
-    export http_proxy="" && export https_proxy=""
+RUN pip install --no-cache-dir --upgrade pip
 
 COPY backend/pyproject.toml /app/pyproject.toml
 
-RUN export http_proxy="http://172.20.8.33:20171" && \
-    export https_proxy="http://172.20.8.33:20171" && \
-    pip install --no-cache-dir -e ".[dev]" && \
-    export http_proxy="" && export https_proxy=""
+RUN pip install --no-cache-dir -e ".[dev]" 
 
 COPY backend/app /app/app
 COPY backend/tests /app/tests

@@ -1,0 +1,118 @@
+<aside class="flex flex-col w-64 bg-slate-900 text-slate-100 h-screen shadow-xl">
+
+    <!-- Logo -->
+    <div class="h-16 flex items-center px-6 border-b border-slate-800">
+
+        <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">
+            A
+        </div>
+
+        <div class="ml-3">
+            <h1 class="font-bold text-lg">
+                AptlyPilot
+            </h1>
+        </div>
+
+    </div>
+
+    <!-- Navigation -->
+
+    <nav class="flex-1 py-4 overflow-y-auto">
+
+        <ul class="space-y-1 px-3">
+
+            <li>
+                <a href="/dashboard"
+                   class="{% if active_page=='dashboard' %}bg-blue-600 text-white{% else %}hover:bg-slate-800{% endif %} flex items-center rounded-lg px-4 py-3">
+
+                    📊
+                    <span class="ml-3">Overview</span>
+
+                </a>
+            </li>
+
+            <li>
+                <a href="/providers"
+                   class="{% if active_page=='providers' %}bg-blue-600 text-white{% else %}hover:bg-slate-800{% endif %} flex items-center rounded-lg px-4 py-3">
+
+                    🌐
+                    <span class="ml-3">Providers</span>
+
+                </a>
+            </li>
+
+            <li>
+                <a href="/releases"
+                   class="{% if active_page=='releases' %}bg-blue-600 text-white{% else %}hover:bg-slate-800{% endif %} flex items-center rounded-lg px-4 py-3">
+
+                    📦
+                    <span class="ml-3">Releases</span>
+
+                </a>
+            </li>
+
+            <li>
+                <a href="/repositories"
+                   class="{% if active_page=='repositories' %}bg-blue-600 text-white{% else %}hover:bg-slate-800{% endif %} flex items-center rounded-lg px-4 py-3">
+
+                    🗂️
+                    <span class="ml-3">Repositories</span>
+
+                </a>
+            </li>
+
+            <li>
+                <a href="/tasks"
+                   class="{% if active_page=='tasks' %}bg-blue-600 text-white{% else %}hover:bg-slate-800{% endif %} flex items-center rounded-lg px-4 py-3">
+
+                    ⚙️
+                    <span class="ml-3">Tasks</span>
+
+                </a>
+            </li>
+
+            <li>
+                <a href="/compliance"
+                   class="{% if active_page=='compliance' %}bg-blue-600 text-white{% else %}hover:bg-slate-800{% endif %} flex items-center rounded-lg px-4 py-3">
+
+                    ✔️
+                    <span class="ml-3">Compliance</span>
+
+                </a>
+            </li>
+
+            <li>
+                <a href="/retention"
+                   class="{% if active_page=='retention' %}bg-blue-600 text-white{% else %}hover:bg-slate-800{% endif %} flex items-center rounded-lg px-4 py-3">
+
+                    🕒
+                    <span class="ml-3">Retention</span>
+
+                </a>
+            </li>
+
+            <li>
+                <a href="/audit"
+                   class="{% if active_page=='audit' %}bg-blue-600 text-white{% else %}hover:bg-slate-800{% endif %} flex items-center rounded-lg px-4 py-3">
+
+                    📜
+                    <span class="ml-3">Audit Logs</span>
+
+                </a>
+            </li>
+
+            <li>
+                <a href="/settings"
+                   class="{% if active_page=='settings' %}bg-blue-600 text-white{% else %}hover:bg-slate-800{% endif %} flex items-center rounded-lg px-4 py-3">
+
+                    ⚙
+                    <span class="ml-3">Settings</span>
+
+                </a>
+            </li>
+
+        </ul>
+
+    </nav>
+
+</aside>

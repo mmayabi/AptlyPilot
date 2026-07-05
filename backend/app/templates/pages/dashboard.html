@@ -1,0 +1,113 @@
+
+{% extends "layouts/layout.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+{% set actions = [
+    {"label":"Sync","icon":"🔄","hx_post":"/dashboard/sync","hx_target":"#sync-card","hx_swap":"outerHTML"},
+    {"label":"New Repository","icon":"➕","href":"/repositories/new"}
+] %}
+
+{% with
+title="Dashboard",
+subtitle="Enterprise Repository Management Platform",
+actions=actions
+%}
+{% include "components/page_header.html" %}
+{% endwith %}
+
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+
+{% with title="Providers", value=overview.providers_count, icon="🌐" %}
+{% include "components/stat_card.html" %}
+{% endwith %}
+
+{% with title="Releases", value=overview.releases_count, icon="💿" %}
+{% include "components/stat_card.html" %}
+{% endwith %}
+
+{% set repo_items=[
+{"label":"Healthy","value":overview.healthy_count,"class":"text-green-600"},
+{"label":"Warning","value":overview.warning_count,"class":"text-yellow-600"},
+{"label":"Critical","value":overview.critical_count,"class":"text-red-600"}
+] %}
+{% with title="Repositories",value=overview.repos_count,icon="📦",items=repo_items %}
+{% include "components/stat_card.html" %}
+{% endwith %}
+
+{% set compliance_items=[
+{"label":"Compliant","value":overview.compliant_count,"class":"text-green-600"},
+{"label":"Non-Compliant","value":overview.non_compliant_count,"class":"text-red-600"}
+] %}
+{% with title="Compliance",value=overview.compliant_count+overview.non_compliant_count,icon="✔️",items=compliance_items %}
+{% include "components/stat_card.html" %}
+{% endwith %}
+
+{% set task_items=[
+{"label":"Running","value":overview.running_count,"class":"text-blue-600"},
+{"label":"Pending","value":overview.pending_count,"class":"text-orange-600"}
+] %}
+{% with title="Tasks",value=overview.running_count+overview.pending_count,icon="⚙️",items=task_items %}
+{% include "components/stat_card.html" %}
+{% endwith %}
+
+{% set retention_items=[
+{"label":"OK","value":overview.retention_ok_count,"class":"text-green-600"},
+{"label":"Exceeded","value":overview.retention_exceeded_count,"class":"text-red-600"}
+] %}
+{% with title="Retention",value=overview.retention_ok_count+overview.retention_exceeded_count,icon="🕒",items=retention_items %}
+{% include "components/stat_card.html" %}
+{% endwith %}
+
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
+
+<div class="xl:col-span-2">
+{% with latest_aptly_sync_at=overview.latest_aptly_sync_at,sync_running=False %}
+{% include "components/sync_card.html" %}
+{% endwith %}
+</div>
+
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+<h2 class="text-lg font-semibold mb-4">Quick Actions</h2>
+
+<div class="grid gap-3">
+<a href="/repositories/new" class="rounded-lg bg-blue-600 text-white px-4 py-3 text-center hover:bg-blue-700">
+➕ Create Repository
+</a>
+
+<button
+hx-post="/dashboard/sync"
+hx-target="#sync-card"
+hx-swap="outerHTML"
+class="rounded-lg bg-slate-800 text-white px-4 py-3 hover:bg-slate-900">
+🔄 Sync Aptly
+</button>
+
+<a href="/tasks"
+class="rounded-lg border border-slate-300 px-4 py-3 text-center hover:bg-slate-50">
+⚙️ View Tasks
+</a>
+</div>
+</div>
+
+</div>
+
+{% set columns=["Time","Event","Status"] %}
+{% set rows=[] %}
+{% with table_title="Recent Activities",columns=columns,rows=rows %}
+{% include "components/table.html" %}
+{% endwith %}
+
+<div class="mt-8">
+{% set columns=["Time","Error","Severity"] %}
+{% set rows=[] %}
+{% with table_title="Recent Errors",columns=columns,rows=rows %}
+{% include "components/table.html" %}
+{% endwith %}
+</div>
+
+{% endblock %}

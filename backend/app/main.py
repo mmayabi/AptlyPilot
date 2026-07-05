@@ -2,6 +2,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
 from app.config import get_settings
@@ -15,6 +16,7 @@ from app.workers.background_scheduler import (
     start_background_scheduler,
     stop_background_scheduler,
 )
+from app.ui.router import ui_router
 
 
 @asynccontextmanager
@@ -53,6 +55,11 @@ def create_app() -> FastAPI:
     app.include_router(
         api_router,
         prefix=settings.API_V1_PREFIX,
+    )
+
+    app.mount("/static", StaticFiles(directory="app/static"), name="static")
+    app.include_router(
+        ui_router,
     )
 
     return app

@@ -1,0 +1,49 @@
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-full">
+
+    <div class="flex justify-between items-start">
+
+        <div>
+
+            <p class="text-sm font-medium text-slate-500">
+                {{ title }}
+            </p>
+
+            <h2 class="text-4xl font-bold mt-2 text-slate-900">
+                {{ value }}
+            </h2>
+
+        </div>
+
+        {% if icon %}
+        <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-2xl">
+            {{ icon }}
+        </div>
+        {% endif %}
+
+    </div>
+
+    {% if items %}
+
+    <div class="mt-6 grid gap-2">
+
+        {% for item in items %}
+
+        <div class="flex justify-between text-sm">
+
+            <span class="text-slate-500">
+                {{ item.label }}
+            </span>
+
+            <span class="font-semibold {{ item.class|default('text-slate-800') }}">
+                {{ item.value }}
+            </span>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+    {% endif %}
+
+</div>
