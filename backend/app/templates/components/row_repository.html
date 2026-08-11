@@ -1,0 +1,62 @@
+{# templates/components/row_repository.html #}
+
+<tr
+    class="hover:bg-blue-50"
+
+    hx-get="/repositories/{{ repo.repo_id }}"
+    hx-target="#repository-drawer"
+    hx-trigger="click"
+
+    style="cursor:pointer"
+>
+
+    <td class="px-5 py-4">
+
+        <div class="ml-14">
+
+            <div class="font-medium text-slate-900">{{ repo.name }}</div>
+            <div class="text-xs text-slate-500">{{ repo.effective_mirror_name }}</div>
+
+        </div>
+
+    </td>
+
+    <td class="px-5 py-4">
+
+        {% with status=repo.health_status %}
+        {% include "components/status_badge.html" %}
+        {% endwith %}
+
+    </td>
+
+    <td class="px-5 py-4">
+
+        {% with status=repo.compliance_status %}
+        {% include "components/compliance_badge.html" %}
+        {% endwith %}
+
+    </td>
+
+    <td class="px-5 py-4">
+
+        {% with status=repo.retention_status %}
+        {% include "components/retention_badge.html" %}
+        {% endwith %}
+
+    </td>
+
+    <td class="px-5 py-4">
+
+        {% with mirror=repo.mirror_enabled, snapshot=repo.snapshot_enabled, publish=repo.publish_enabled %}
+        {% include "components/pipeline_badge.html" %}
+        {% endwith %}
+
+    </td>
+
+    <td class="px-5 py-4 text-right text-sm text-slate-600">
+
+        {{ repo.snapshots_count }} snapshots
+
+    </td>
+
+</tr>

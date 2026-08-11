@@ -1,0 +1,39 @@
+{# templates/components/compliance_badge.html #}
+
+{% if status is defined %}
+    {% if status == "compliant" %}
+        <span class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">Compliant</span>
+    {% elif status == "non_compliant" %}
+        <span class="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">Non-compliant</span>
+    {% else %}
+        <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ status|replace("_", " ")|title }}</span>
+    {% endif %}
+{% else %}
+<div class="flex flex-wrap items-center gap-1">
+
+    {% if compliant_count > 0 %}
+        <span
+            class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700"
+            title="{{ compliant_count }} Compliant"
+        >
+            Compliant
+            {{ compliant_count }}
+        </span>
+    {% endif %}
+
+    {% if non_compliant_count > 0 %}
+        <span
+            class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700"
+            title="{{ non_compliant_count }} Non-compliant"
+        >
+            Non-compliant
+            {{ non_compliant_count }}
+        </span>
+    {% endif %}
+
+    {% if compliant_count == 0 and non_compliant_count == 0 %}
+        <span class="text-slate-400">-</span>
+    {% endif %}
+
+</div>
+{% endif %}

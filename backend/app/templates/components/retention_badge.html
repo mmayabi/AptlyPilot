@@ -1,0 +1,39 @@
+{# templates/components/retention_badge.html #}
+
+{% if status is defined %}
+    {% if status == "ok" %}
+        <span class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">OK</span>
+    {% elif status == "exceeded" %}
+        <span class="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">Exceeded</span>
+    {% else %}
+        <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ status|replace("_", " ")|title }}</span>
+    {% endif %}
+{% else %}
+<div class="flex flex-wrap items-center gap-1">
+
+    {% if retention_ok_count > 0 %}
+        <span
+            class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700"
+            title="{{ retention_ok_count }} Retention OK"
+        >
+            OK
+            {{ retention_ok_count }}
+        </span>
+    {% endif %}
+
+    {% if retention_exceeded_count > 0 %}
+        <span
+            class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-semibold text-yellow-700"
+            title="{{ retention_exceeded_count }} Retention Exceeded"
+        >
+            Exceeded
+            {{ retention_exceeded_count }}
+        </span>
+    {% endif %}
+
+    {% if retention_ok_count == 0 and retention_exceeded_count == 0 %}
+        <span class="text-slate-400">-</span>
+    {% endif %}
+
+</div>
+{% endif %}

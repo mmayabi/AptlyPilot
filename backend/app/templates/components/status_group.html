@@ -1,0 +1,43 @@
+{# templates/components/status_group.html #}
+
+<div class="flex flex-wrap items-center gap-1">
+
+    {% if healthy_count > 0 %}
+        <span
+            class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700"
+            title="{{ healthy_count }} Healthy"
+        >
+            Healthy
+            {{ healthy_count }}
+        </span>
+    {% endif %}
+
+    {% if warning_count > 0 %}
+        <span
+            class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-semibold text-yellow-700"
+            title="{{ warning_count }} Warning"
+        >
+            Warning
+            {{ warning_count }}
+        </span>
+    {% endif %}
+
+    {% if critical_count > 0 %}
+        <span
+            class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700"
+            title="{{ critical_count }} Critical"
+        >
+            Critical
+            {{ critical_count }}
+        </span>
+    {% endif %}
+
+    {% if healthy_count == 0
+        and warning_count == 0
+        and critical_count == 0 %}
+
+        <span class="text-slate-400">-</span>
+
+    {% endif %}
+
+</div>

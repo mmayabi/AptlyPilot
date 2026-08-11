@@ -1,0 +1,52 @@
+<div class="rounded-lg border {% if result.status == 'success' %}border-green-200 bg-green-50 text-green-800{% elif result.status == 'partial_failed' %}border-yellow-200 bg-yellow-50 text-yellow-800{% else %}border-red-200 bg-red-50 text-red-800{% endif %} p-4">
+    <div class="flex items-start justify-between gap-4">
+        <div>
+            <h2 class="text-sm font-semibold">
+                {{ title }}: {{ result.status|replace("_", " ")|title }}
+            </h2>
+            <p class="mt-1 text-sm">
+                {{ description }}
+            </p>
+        </div>
+
+        <button
+            type="button"
+            class="text-sm font-semibold"
+            onclick="this.closest('div.rounded-lg').remove()">
+            Close
+        </button>
+    </div>
+
+    {% if result.total is defined %}
+    <div class="mt-3 grid grid-cols-3 gap-3 text-sm">
+        <div>
+            <div class="font-semibold">{{ result.total }}</div>
+            <div>Total</div>
+        </div>
+        <div>
+            <div class="font-semibold">{{ result.created|default(0) }}</div>
+            <div>Created</div>
+        </div>
+        <div>
+            <div class="font-semibold">{{ result.updated|default(0) }}</div>
+            <div>Updated</div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if result.errors %}
+    <ul class="mt-3 space-y-1 text-sm">
+        {% for error in result.errors %}
+        <li>
+            {% if error.resource_type is defined %}
+                {{ error.resource_type }}: {{ error.error }}
+            {% elif error.message is defined %}
+                {{ error.message }}
+            {% else %}
+                {{ error }}
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>

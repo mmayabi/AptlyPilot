@@ -1,0 +1,51 @@
+<div
+    id="aptly-activity-card"
+    {% if oob %}hx-swap-oob="true"{% endif %}
+    class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+
+    <div>
+        <div>
+            <h3 class="text-lg font-semibold text-slate-900">
+                Aptly Activity
+            </h3>
+            <p class="mt-1 text-sm text-slate-500">
+                Latest observed Aptly timestamps across all repositories.
+            </p>
+        </div>
+    </div>
+
+    <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs font-semibold uppercase text-slate-500">
+                Latest Mirror Download
+            </p>
+            <p class="mt-2 text-sm font-semibold text-slate-900">
+                {{ overview.latest_mirror_download_at or "-" }}
+            </p>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs font-semibold uppercase text-slate-500">
+                Latest Snapshot Created
+            </p>
+            <p class="mt-2 text-sm font-semibold text-slate-900">
+                {{ overview.latest_snapshot_created_at or "-" }}
+            </p>
+        </div>
+
+        {% if overview.latest_published_snapshot_created_at %}
+            <div class="rounded-lg border border-slate-200 p-4">
+                <p class="text-xs font-semibold uppercase text-slate-500">
+                    Latest Published Snapshot
+                </p>
+                <p class="mt-2 text-sm font-semibold text-slate-900">
+                    {{ overview.latest_published_snapshot_created_at }}
+                </p>
+            </div>
+        {% endif %}
+    </div>
+
+    <p class="mt-4 text-xs text-slate-500">
+        These are aggregate latest values. Individual repositories may have older mirror, snapshot, or publish timestamps.
+    </p>
+</div>

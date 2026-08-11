@@ -1,0 +1,17 @@
+{# templates/components/relative_time.html #}
+
+{% if datetime %}
+
+<span
+    title="{{ datetime }}"
+    data-bs-toggle="tooltip"
+    data-bs-placement="top"
+>
+    {{ relative }}
+</span>
+
+{% else %}
+
+<span class="text-secondary">-</span>
+
+{% endif %}

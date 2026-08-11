@@ -6,8 +6,7 @@
 {% block content %}
 
 {% set actions = [
-    {"label":"Sync","icon":"🔄","hx_post":"/dashboard/sync","hx_target":"#sync-card","hx_swap":"outerHTML"},
-    {"label":"New Repository","icon":"➕","href":"/repositories/new"}
+    {"label":"Refresh Aptly State","icon":"Refresh","hx_post":"/dashboard/sync-aptly","hx_target":"#sync-card","hx_swap":"outerHTML"}
 ] %}
 
 {% with
@@ -66,33 +65,14 @@ actions=actions
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
 
 <div class="xl:col-span-2">
-{% with latest_aptly_sync_at=overview.latest_aptly_sync_at,sync_running=False %}
-{% include "components/sync_card.html" %}
+{% with overview=overview %}
+{% include "components/aptly_activity_card.html" %}
 {% endwith %}
 </div>
 
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-<h2 class="text-lg font-semibold mb-4">Quick Actions</h2>
-
-<div class="grid gap-3">
-<a href="/repositories/new" class="rounded-lg bg-blue-600 text-white px-4 py-3 text-center hover:bg-blue-700">
-➕ Create Repository
-</a>
-
-<button
-hx-post="/dashboard/sync"
-hx-target="#sync-card"
-hx-swap="outerHTML"
-class="rounded-lg bg-slate-800 text-white px-4 py-3 hover:bg-slate-900">
-🔄 Sync Aptly
-</button>
-
-<a href="/tasks"
-class="rounded-lg border border-slate-300 px-4 py-3 text-center hover:bg-slate-50">
-⚙️ View Tasks
-</a>
-</div>
-</div>
+{% with overview=overview %}
+{% include "components/sync_actions_card.html" %}
+{% endwith %}
 
 </div>
 

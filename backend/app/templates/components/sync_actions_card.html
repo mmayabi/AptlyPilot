@@ -1,0 +1,86 @@
+<div
+    id="sync-actions-card"
+    class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+
+    <h2 class="text-lg font-semibold text-slate-900">
+        Synchronization
+    </h2>
+
+    <div class="mt-5 grid gap-4">
+        <div class="rounded-lg border border-slate-200 p-4">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-900">
+                        Actual Aptly State
+                    </h3>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Reads mirrors, snapshots, and publishes from Aptly.
+                    </p>
+                </div>
+                <button
+                    hx-post="/dashboard/sync-aptly"
+                    hx-target="#sync-actions-card"
+                    hx-swap="outerHTML"
+                    class="shrink-0 rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-900">
+                    Refresh
+                </button>
+            </div>
+            <dl class="mt-4 text-sm">
+                <div class="flex justify-between gap-3">
+                    <dt class="text-slate-500">Last read from Aptly</dt>
+                    <dd class="text-right font-medium text-slate-900">{{ overview.latest_aptly_sync_at or "-" }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 p-4">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-900">
+                        Expected Config
+                    </h3>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Reads repository config and stores expected state in DB.
+                    </p>
+                </div>
+                <button
+                    hx-post="/dashboard/sync-from-config"
+                    hx-target="#sync-actions-card"
+                    hx-swap="outerHTML"
+                    class="shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                    Sync
+                </button>
+            </div>
+            <dl class="mt-4 text-sm">
+                <div class="flex justify-between gap-3">
+                    <dt class="text-slate-500">Last config DB update</dt>
+                    <dd class="text-right font-medium text-slate-900">{{ overview.latest_config_sync_at or "-" }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    {% if sync_result %}
+    <div class="mt-5 rounded-lg border {% if sync_result.status == 'success' %}border-green-200 bg-green-50 text-green-800{% elif sync_result.status == 'partial_failed' %}border-yellow-200 bg-yellow-50 text-yellow-800{% else %}border-red-200 bg-red-50 text-red-800{% endif %} p-4">
+        <div class="text-sm font-semibold">
+            {{ sync_result_title }}: {{ sync_result.status|replace("_", " ")|title }}
+        </div>
+
+        {% if sync_result.total is defined %}
+        <p class="mt-1 text-sm">
+            Total {{ sync_result.total }}, created {{ sync_result.created|default(0) }}, updated {{ sync_result.updated|default(0) }}.
+        </p>
+        {% elif sync_result.errors %}
+        <ul class="mt-2 space-y-1 text-sm">
+            {% for error in sync_result.errors %}
+            <li>{{ error.resource_type|default("sync") }}: {{ error.error|default(error.message|default(error)) }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="mt-1 text-sm">
+            Sync completed.
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

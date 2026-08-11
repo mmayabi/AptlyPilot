@@ -13,11 +13,6 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/login", name="login")
 def login_page(request: Request):
-
-    print(request.cookies)
-    if request.cookies.get("access_token"):
-        return RedirectResponse(url="/", status_code=303)
-
     return templates.TemplateResponse(
         request=request,
         name="pages/login.html",
@@ -60,8 +55,6 @@ def login(
         path="/",
         max_age=3600,
     )
-
-    print(response.raw_headers)
 
     return response
 

@@ -1,0 +1,9 @@
+{% for repo in repositories %}
+    {% include "components/row_repository.html" %}
+{% else %}
+    <tr>
+        <td colspan="6" class="px-5 py-6 text-center text-sm text-slate-500">
+            No repositories found.
+        </td>
+    </tr>
+{% endfor %}

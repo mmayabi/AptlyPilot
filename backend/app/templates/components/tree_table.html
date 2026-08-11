@@ -1,0 +1,46 @@
+{# templates/components/tree_table.html #}
+
+<div class="card">
+    {% if title %}
+    <div class="card-header">
+        <h3 class="card-title">{{ title }}</h3>
+
+        {% if toolbar %}
+        <div class="card-actions">
+            {{ toolbar|safe }}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <table class="min-w-full table-fixed divide-y divide-slate-200">
+
+            <colgroup>
+                {% for column in columns %}
+                    <col {% if column.width %}style="width: {{ column.width }}"{% endif %}>
+                {% endfor %}
+            </colgroup>
+
+            <thead class="bg-slate-50">
+            <tr>
+                {% for column in columns %}
+                    <th
+                        class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 {% if column.align == 'right' or column.align == 'end' %}text-right{% endif %}"
+                    >
+                        {{ column.title }}
+                    </th>
+                {% endfor %}
+            </tr>
+            </thead>
+
+            <tbody id="{{ tbody_id|default('tree-table-body') }}" class="divide-y divide-slate-100 bg-white">
+
+                {{ rows|safe }}
+
+            </tbody>
+
+        </table>
+    </div>
+
+</div>

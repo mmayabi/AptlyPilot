@@ -1,0 +1,62 @@
+{% extends "layouts/layout.html" %}
+
+{% block title %}
+Repository Dashboard
+{% endblock %}
+
+{% block content %}
+
+{% set actions = [
+    {"label":"Actual State","icon":"Refresh","hx_post":"/repositories/sync-aptly","hx_target":"#ui-sync-result","hx_swap":"innerHTML"},
+    {"label":"Expected Config","icon":"Sync","hx_post":"/repositories/sync-from-config","hx_target":"#ui-sync-result","hx_swap":"innerHTML","class":"bg-slate-800 hover:bg-slate-900 text-white"},
+    {"label":"Dashboard","icon":"Overview","href":"/dashboard","class":"border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}
+] %}
+
+{% with
+title="Repositories",
+subtitle="Browse providers, releases, and Aptly repository state",
+actions=actions
+%}
+{% include "components/page_header.html" %}
+{% endwith %}
+
+<div class="space-y-6">
+
+    <div id="ui-sync-result"></div>
+
+    <div>
+
+        {% set columns = [
+
+            {"title":"Provider / Release / Repository","width":"34%"},
+
+            {"title":"Health","width":"15%"},
+
+            {"title":"Compliance","width":"15%"},
+
+            {"title":"Retention","width":"15%"},
+
+            {"title":"Pipeline","width":"13%"},
+
+            {"title":"Count","align":"right","width":"8%"}
+
+        ] %}
+        {% set rows %}
+
+            {% for provider in providers %}
+
+                {% include "components/row_provider.html" %}
+
+            {% endfor %}
+
+        {% endset %}
+
+
+        {% include "components/tree_table.html" %}
+
+    </div>
+
+    <div id="repository-drawer"></div>
+
+</div>
+{% endblock %}

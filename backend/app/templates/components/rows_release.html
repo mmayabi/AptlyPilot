@@ -1,0 +1,9 @@
+{% for release in releases %}
+    {% include "components/row_release.html" %}
+{% else %}
+    <tr>
+        <td colspan="6" class="px-5 py-6 text-center text-sm text-slate-500">
+            No releases found.
+        </td>
+    </tr>
+{% endfor %}

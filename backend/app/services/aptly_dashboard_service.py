@@ -617,13 +617,53 @@ def summarize_items(items: list[dict[str, Any]]) -> dict[str, Any]:
 # ----------------------------
 
 def get_dashboard_summary(session: Session) -> dict[str, Any]:
-    items = build_all_repo_dashboard_items(session)
+    repos, mirrors_by_name, snapshots_by_source_mirror, publishes = load_dashboard_base_data(session)
+
+    snapshots = [
+        snapshot
+        for snapshot_group in snapshots_by_source_mirror.values()
+        for snapshot in snapshot_group
+    ]
+
+    items = [
+        build_repo_dashboard_item(
+            repo=repo,
+            mirrors_by_name=mirrors_by_name,
+            snapshots_by_source_mirror=snapshots_by_source_mirror,
+            all_publishes=publishes,
+        )
+        for repo in repos
+    ]
 
     providers = {item["provider"] for item in items}
     releases = {(item["provider"], item["release"]) for item in items}
 
+    mirrors = list(mirrors_by_name.values())
+
     latest_aptly_sync_at = get_latest_datetime(
-        [item.get("latest_mirror_update_at") for item in items]
+        [
+            *[mirror.aptly_last_synced_at for mirror in mirrors],
+            *[snapshot.aptly_last_synced_at for snapshot in snapshots],
+            *[publish.aptly_last_synced_at for publish in publishes],
+        ]
+    )
+    latest_config_sync_at = get_latest_datetime(
+        [repo.updated_at for repo in repos]
+    )
+    latest_mirror_sync_at = get_latest_datetime(
+        [mirror.aptly_last_synced_at for mirror in mirrors]
+    )
+    latest_snapshot_sync_at = get_latest_datetime(
+        [snapshot.aptly_last_synced_at for snapshot in snapshots]
+    )
+    latest_published_snapshot_created_at = get_latest_datetime(
+        [item.get("published_snapshot_created_at") for item in items]
+    )
+    latest_mirror_download_at = get_latest_datetime(
+        [mirror.last_download_date for mirror in mirrors]
+    )
+    latest_snapshot_created_at = get_latest_datetime(
+        [snapshot.created_at_aptly for snapshot in snapshots]
     )
 
     return {
@@ -645,6 +685,12 @@ def get_dashboard_summary(session: Session) -> dict[str, Any]:
         "retention_exceeded_count": count_items(items, "retention_status", "exceeded"),
 
         "latest_aptly_sync_at": latest_aptly_sync_at,
+        "latest_config_sync_at": latest_config_sync_at,
+        "latest_mirror_sync_at": latest_mirror_sync_at,
+        "latest_snapshot_sync_at": latest_snapshot_sync_at,
+        "latest_published_snapshot_created_at": latest_published_snapshot_created_at,
+        "latest_mirror_download_at": latest_mirror_download_at,
+        "latest_snapshot_created_at": latest_snapshot_created_at,
         "is_inventory_stale": False,
     }
 

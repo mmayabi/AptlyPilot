@@ -30,7 +30,7 @@
 
             <button
 
-                hx-post="/dashboard/sync"
+                hx-post="/dashboard/sync-aptly"
 
                 hx-target="#sync-card"
 
@@ -38,7 +38,7 @@
 
                 class="rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-5 py-2">
 
-                Sync Now
+                Refresh Aptly State
 
             </button>
 
@@ -65,6 +65,28 @@
 
         </p>
 
+    </div>
+
+    {% endif %}
+
+    {% if sync_result %}
+
+    <div class="mt-5 rounded-lg border {% if sync_result.status == 'success' %}border-green-200 bg-green-50 text-green-800{% elif sync_result.status == 'partial_failed' %}border-yellow-200 bg-yellow-50 text-yellow-800{% else %}border-red-200 bg-red-50 text-red-800{% endif %} p-4">
+        <div class="text-sm font-semibold">
+            {{ sync_result.status|replace("_", " ")|title }}
+        </div>
+
+        {% if sync_result.errors %}
+        <ul class="mt-2 space-y-1 text-sm">
+            {% for error in sync_result.errors %}
+            <li>{{ error.resource_type|default("sync") }}: {{ error.error|default(error) }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="mt-1 text-sm">
+            Aptly inventory was refreshed.
+        </p>
+        {% endif %}
     </div>
 
     {% endif %}

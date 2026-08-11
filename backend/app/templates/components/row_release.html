@@ -1,0 +1,93 @@
+{# templates/components/row_release.html #}
+
+{% set provider_dom_id = release.provider|replace(" ", "-")|replace(".", "-")|replace("/", "-")|replace(":", "-") %}
+{% set release_dom_id = release.release|replace(" ", "-")|replace(".", "-")|replace("/", "-")|replace(":", "-") %}
+
+<tr
+    id="release-row-{{ provider_dom_id }}-{{ release_dom_id }}"
+    class="cursor-pointer bg-slate-50 hover:bg-slate-100"
+    data-provider="{{ release.provider }}"
+    data-release="{{ release.release }}"
+    data-tree-target="release-{{ provider_dom_id }}-{{ release_dom_id }}"
+    hx-get="/repositories/providers/{{ release.provider|urlencode }}/releases/{{ release.release|urlencode }}"
+    hx-target="#release-{{ provider_dom_id }}-{{ release_dom_id }}"
+    hx-swap="innerHTML"
+    hx-on::before-request="
+        const target = document.getElementById(this.dataset.treeTarget);
+        const chevron = this.querySelector('[data-tree-chevron]');
+        if (target.dataset.expanded === 'true') {
+            target.innerHTML = '';
+            target.dataset.expanded = 'false';
+            if (chevron) chevron.textContent = '>';
+            event.preventDefault();
+            return;
+        }
+        target.dataset.expanded = 'true';
+        if (chevron) chevron.textContent = 'v';
+    "
+>
+    <td class="px-5 py-4">
+        <div class="ml-6 flex items-center gap-3">
+
+            <button
+                type="button"
+                class="flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+                title="Expand"
+                aria-label="Expand release"
+            >
+                <span data-tree-chevron>></span>
+            </button>
+
+            <div>
+                <div class="font-medium text-slate-900">{{ release.release }}</div>
+                <div class="text-xs text-slate-500">{{ release.repos_count }} repositories</div>
+            </div>
+
+        </div>
+    </td>
+
+    <td class="px-5 py-4">
+        {% with healthy_count=release.healthy_count, warning_count=release.warning_count, critical_count=release.critical_count %}
+        {% include "components/status_group.html" %}
+        {% endwith %}
+    </td>
+
+    <td class="px-5 py-4">
+        {% with compliant_count=release.compliant_count, non_compliant_count=release.non_compliant_count %}
+        {% include "components/compliance_badge.html" %}
+        {% endwith %}
+    </td>
+
+    <td class="px-5 py-4">
+        {% with retention_ok_count=release.retention_ok_count, retention_exceeded_count=release.retention_exceeded_count %}
+        {% include "components/retention_badge.html" %}
+        {% endwith %}
+    </td>
+
+    <td class="px-5 py-4">
+        <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+            {{ release.operational_status|replace("_", " ")|title }}
+        </span>
+    </td>
+
+    <td class="px-5 py-4 text-right text-sm font-medium text-slate-700">
+        {{ release.repos_count }} repos
+    </td>
+
+</tr>
+
+<tr>
+    <td colspan="6" class="p-0">
+        <table class="min-w-full table-fixed">
+            <colgroup>
+                <col style="width: 34%">
+                <col style="width: 15%">
+                <col style="width: 15%">
+                <col style="width: 15%">
+                <col style="width: 13%">
+                <col style="width: 8%">
+            </colgroup>
+            <tbody id="release-{{ provider_dom_id }}-{{ release_dom_id }}" class="divide-y divide-slate-100 bg-white"></tbody>
+        </table>
+    </td>
+</tr>
