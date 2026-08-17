@@ -1,0 +1,10 @@
+{% if error %}
+<div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+    {{ error }}
+</div>
+{% elif queue_item %}
+<div class="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+    Pipeline queued as item #{{ queue_item.id }}.
+    <span class="font-semibold">{{ queue_item.status|title }}</span>
+</div>
+{% endif %}

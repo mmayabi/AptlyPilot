@@ -1,11 +1,18 @@
+import json
 from datetime import datetime, timedelta
+from typing import Any
+
 from sqlmodel import Session, select
 
-from fastapi import HTTPException
-
+from app.clients.aptly_client import AptlyClient
+from app.config import get_settings
 from app.models.job import Job, JobStep
 from app.models.script import Script
-from app.models.worker_queue import WorkerQueueItem, WorkerQueueStatus, WorkerQueueRequestedBy
+from app.models.worker_queue import WorkerQueueItem, WorkerQueueStatus
+from app.services.repository_operation_service import (
+    SUPPORTED_REPOSITORY_OPERATION_SCRIPTS,
+    run_repository_operation_step,
+)
 from app.services.worker_queue_service import enqueue_next_step_after_success
 
 HEARTBEAT_INTERVAL_SECONDS = 30
@@ -78,25 +85,110 @@ def mark_step_failed(item: WorkerQueueItem, log: str, error_message: str, sessio
     session.add(item)
     session.commit()
 
+
+def make_aptly_client() -> AptlyClient:
+    settings = get_settings()
+
+    return AptlyClient(
+        base_url=settings.APTLY_API_URL,
+        username=settings.APTLY_API_USERNAME,
+        password=settings.APTLY_API_PASSWORD,
+        token=settings.APTLY_API_TOKEN,
+    )
+
+
+def json_log(payload: dict[str, Any]) -> str:
+    return json.dumps(
+        payload,
+        ensure_ascii=False,
+        indent=2,
+        default=str,
+    )
+
+
+def run_script_step(
+    *,
+    script: Script,
+    job: Job,
+    step: JobStep,
+    session: Session,
+) -> dict[str, Any]:
+    params = step.params or {}
+
+    if script.name in SUPPORTED_REPOSITORY_OPERATION_SCRIPTS:
+        return run_repository_operation_step(
+            script_name=script.name,
+            session=session,
+            repo_id=job.repo_id,
+            params=params,
+            aptly_client=make_aptly_client(),
+        )
+
+    raise ValueError(
+        f"Unsupported script '{script.name}'. "
+        "Only Aptly operation scripts are executable by this worker."
+    )
+
+
 def run_queue_item(item: WorkerQueueItem, session: Session, worker_id: str = "worker-1") -> WorkerQueueItem:
     mark_queue_item_running(item, worker_id, session)
+
+    job = session.get(Job, item.job_id)
+    if not job:
+        mark_step_failed(
+            item=item,
+            log="",
+            error_message=f"Job not found: {item.job_id}",
+            session=session,
+            retry_allowed=False,
+        )
+        return session.get(WorkerQueueItem, item.id)
+
     step = session.get(JobStep, item.job_step_id)
     if not step:
-        raise HTTPException(status_code=404, detail="JobStep not found")
+        mark_step_failed(
+            item=item,
+            log="",
+            error_message=f"JobStep not found: {item.job_step_id}",
+            session=session,
+            retry_allowed=False,
+        )
+        return session.get(WorkerQueueItem, item.id)
 
     script = session.get(Script, step.script_id)
     if not script:
         mark_step_failed(item, "", f"Script not found: {step.script_id}", session, retry_allowed=False)
         return session.get(WorkerQueueItem, item.id)
 
-    # اجرای script واقعی
-    exit_code = 0  # فرضی، خروجی subprocess
-    log = ""       # فرضی
+    try:
+        result = run_script_step(
+            script=script,
+            job=job,
+            step=step,
+            session=session,
+        )
+        mark_step_success(
+            item=item,
+            log=json_log(result),
+            session=session,
+        )
+    except Exception as exc:
+        failure_log = {
+            "status": "failed",
+            "script_name": script.name,
+            "job_id": job.id,
+            "job_step_id": step.id,
+            "repo_id": job.repo_id,
+            "error": str(exc),
+        }
 
-    if exit_code == 0:
-        mark_step_success(item, log, session)
-    else:
-        mark_step_failed(item, log, f"Script failed with exit code {exit_code}", session, retry_allowed=True)
+        mark_step_failed(
+            item=item,
+            log=json_log(failure_log),
+            error_message=str(exc),
+            session=session,
+            retry_allowed=True,
+        )
 
     return session.get(WorkerQueueItem, item.id)
 

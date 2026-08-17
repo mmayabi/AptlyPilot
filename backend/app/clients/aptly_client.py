@@ -426,6 +426,38 @@ class AptlyClient:
             **task_result,
         }
 
+    def delete_snapshot(
+        self,
+        snapshot_name: str,
+        *,
+        force: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Delete a snapshot from Aptly.
+
+        Equivalent to:
+
+            aptly snapshot drop <snapshot_name>
+        """
+
+        safe_name = quote(snapshot_name, safe="")
+        params: dict[str, str] = {}
+
+        if force:
+            params["force"] = "1"
+
+        data = self.request(
+            "DELETE",
+            f"/api/snapshots/{safe_name}",
+            params=params,
+        )
+
+        return {
+            "snapshot_name": snapshot_name,
+            "deleted": True,
+            "result": data,
+        }
+
     # -----------------------------
     # Publish
     # -----------------------------
@@ -453,11 +485,25 @@ class AptlyClient:
 
         return quote(encoded, safe=":")
 
+    def _build_publish_api_prefix(
+        self,
+        *,
+        storage: str | None = None,
+        prefix: str | None = ".",
+    ) -> str | None:
+        normalized_prefix = prefix or "."
+
+        if storage:
+            return f"{storage}:{normalized_prefix}"
+
+        return normalized_prefix
+
     def _find_publish(
         self,
         *,
         prefix: str | None,
         distribution: str,
+        storage: str | None = None,
     ) -> dict[str, Any] | None:
         """
         publish موجود را از خروجی /api/publish پیدا می‌کند.
@@ -471,8 +517,13 @@ class AptlyClient:
         for item in self.list_publishes():
             item_prefix = item.get("Prefix") or "."
             item_distribution = item.get("Distribution")
+            item_storage = item.get("Storage")
 
-            if item_prefix == normalized_prefix and item_distribution == distribution:
+            if (
+                item_prefix == normalized_prefix
+                and item_distribution == distribution
+                and (storage is None or item_storage == storage)
+            ):
                 return item
 
         return None
@@ -482,10 +533,12 @@ class AptlyClient:
         *,
         prefix: str | None,
         distribution: str,
+        storage: str | None = None,
     ) -> bool:
         return self._find_publish(
             prefix=prefix,
             distribution=distribution,
+            storage=storage,
         ) is not None
 
     def publish_snapshot(
@@ -493,6 +546,7 @@ class AptlyClient:
         *,
         snapshot_name: str,
         prefix: str | None = ".",
+        storage: str | None = None,
         distribution: str | None = None,
         component: str = "main",
         architectures: list[str] | None = None,
@@ -522,8 +576,16 @@ class AptlyClient:
         - fail_if_exists=False -> publish موجود را برمی‌گرداند
         """
 
-        if distribution and self.publish_exists(prefix=prefix, distribution=distribution):
-            existing = self._find_publish(prefix=prefix, distribution=distribution)
+        if distribution and self.publish_exists(
+            prefix=prefix,
+            distribution=distribution,
+            storage=storage,
+        ):
+            existing = self._find_publish(
+                prefix=prefix,
+                distribution=distribution,
+                storage=storage,
+            )
 
             if fail_if_exists:
                 raise AptlyAPIError(
@@ -539,7 +601,11 @@ class AptlyClient:
                 "publish": existing,
             }
 
-        encoded_prefix = self._encode_publish_prefix(prefix)
+        api_prefix = self._build_publish_api_prefix(
+            storage=storage,
+            prefix=prefix,
+        )
+        encoded_prefix = self._encode_publish_prefix(api_prefix)
 
         body: dict[str, Any] = {
             "SourceKind": "snapshot",
@@ -595,6 +661,7 @@ class AptlyClient:
                     existing = self._find_publish(
                         prefix=prefix,
                         distribution=distribution,
+                        storage=storage,
                     )
 
                     if existing:
@@ -612,6 +679,7 @@ class AptlyClient:
             "mode": "publish",
             "created": True,
             "prefix": prefix or ".",
+            "storage": storage,
             "distribution": distribution,
             "snapshot_name": snapshot_name,
             "publish": data,
@@ -622,6 +690,7 @@ class AptlyClient:
         *,
         snapshot_name: str,
         prefix: str | None = ".",
+        storage: str | None = None,
         distribution: str,
         component: str = "main",
         force_overwrite: bool = False,
@@ -643,6 +712,7 @@ class AptlyClient:
         existing = self._find_publish(
             prefix=prefix,
             distribution=distribution,
+            storage=storage,
         )
 
         if existing is None:
@@ -667,7 +737,11 @@ class AptlyClient:
                 f"source_kind={existing.get('SourceKind')}"
             )
 
-        encoded_prefix = self._encode_publish_prefix(prefix)
+        api_prefix = self._build_publish_api_prefix(
+            storage=storage,
+            prefix=prefix,
+        )
+        encoded_prefix = self._encode_publish_prefix(api_prefix)
         encoded_distribution = quote(distribution, safe="")
 
         body: dict[str, Any] = {
@@ -699,6 +773,7 @@ class AptlyClient:
             "mode": "switch",
             "updated": True,
             "prefix": prefix or ".",
+            "storage": storage,
             "distribution": distribution,
             "snapshot_name": snapshot_name,
             "publish": data,
@@ -709,6 +784,7 @@ class AptlyClient:
         *,
         snapshot_name: str,
         prefix: str | None = ".",
+        storage: str | None = None,
         distribution: str,
         component: str = "main",
         architectures: list[str] | None = None,
@@ -732,12 +808,14 @@ class AptlyClient:
         existing = self._find_publish(
             prefix=prefix,
             distribution=distribution,
+            storage=storage,
         )
 
         if existing is None:
             return self.publish_snapshot(
                 snapshot_name=snapshot_name,
                 prefix=prefix,
+                storage=storage,
                 distribution=distribution,
                 component=component,
                 architectures=architectures,
@@ -756,6 +834,7 @@ class AptlyClient:
         return self.switch_published_snapshot(
             snapshot_name=snapshot_name,
             prefix=prefix,
+            storage=storage,
             distribution=distribution,
             component=component,
             force_overwrite=force_overwrite,
@@ -769,6 +848,7 @@ class AptlyClient:
         self,
         *,
         prefix: str | None = ".",
+        storage: str | None = None,
         distribution: str,
         force: bool = False,
     ) -> dict[str, Any]:
@@ -780,7 +860,11 @@ class AptlyClient:
             aptly publish drop <distribution> <prefix>
         """
 
-        encoded_prefix = self._encode_publish_prefix(prefix)
+        api_prefix = self._build_publish_api_prefix(
+            storage=storage,
+            prefix=prefix,
+        )
+        encoded_prefix = self._encode_publish_prefix(api_prefix)
         encoded_distribution = quote(distribution, safe="")
 
         params: dict[str, str] = {}
@@ -795,6 +879,7 @@ class AptlyClient:
 
         return {
             "prefix": prefix or ".",
+            "storage": storage,
             "distribution": distribution,
             "dropped": True,
             "result": data,

@@ -5,9 +5,11 @@ from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
 from app.models.job import Job, JobStep
+from app.models.repo import Repo
 from app.models.script import Script
 from app.models.worker_queue import WorkerQueueItem, WorkerQueueRequestedBy, WorkerQueueStatus
 from app.schemas.worker_queue import WorkerQueueRead
+from app.services.repo_service import ensure_pipeline_job_for_repo
 
 def new_execution_id() -> str:
     return str(uuid4())
@@ -91,6 +93,131 @@ def enqueue_job(
     session.commit()
     session.refresh(queue_item)
     return queue_item
+
+
+def enqueue_repository_pipeline(
+    repo_id: int,
+    session: Session,
+    requested_by_user_id: int | None = None,
+) -> WorkerQueueItem:
+    repo = session.get(Repo, repo_id)
+    if repo is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Repository not found: {repo_id}",
+        )
+
+    job = ensure_pipeline_job_for_repo(session, repo)
+    session.commit()
+
+    return enqueue_job(
+        job_id=job.id,
+        session=session,
+        requested_by_user_id=requested_by_user_id,
+        requested_by=WorkerQueueRequestedBy.MANUAL,
+    )
+
+
+def list_worker_queue_for_repo(
+    repo_id: int,
+    session: Session,
+    limit: int = 20,
+) -> list[WorkerQueueItem]:
+    jobs = session.exec(select(Job).where(Job.repo_id == repo_id)).all()
+    job_ids = [job.id for job in jobs if job.id is not None]
+
+    if not job_ids:
+        return []
+
+    return list(
+        session.exec(
+            select(WorkerQueueItem)
+            .where(WorkerQueueItem.job_id.in_(job_ids))
+            .order_by(WorkerQueueItem.created_at.desc(), WorkerQueueItem.id.desc())
+            .limit(limit)
+        ).all()
+    )
+
+
+def list_worker_queue_run_details_for_repo(
+    repo_id: int,
+    session: Session,
+    limit: int = 20,
+) -> list[dict]:
+    return list_worker_queue_run_details(
+        session=session,
+        repo_id=repo_id,
+        limit=limit,
+    )
+
+
+def list_worker_queue_run_details(
+    session: Session,
+    status_filter: WorkerQueueStatus | None = None,
+    repo_id: int | None = None,
+    requested_by: WorkerQueueRequestedBy | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    query = select(WorkerQueueItem).order_by(
+        WorkerQueueItem.created_at.desc(),
+        WorkerQueueItem.id.desc(),
+    )
+
+    if status_filter is not None:
+        query = query.where(WorkerQueueItem.status == status_filter)
+
+    if requested_by is not None:
+        query = query.where(WorkerQueueItem.requested_by == requested_by)
+
+    if repo_id is not None:
+        jobs = session.exec(select(Job).where(Job.repo_id == repo_id)).all()
+        job_ids = [job.id for job in jobs if job.id is not None]
+        if not job_ids:
+            return []
+        query = query.where(WorkerQueueItem.job_id.in_(job_ids))
+
+    items = list(session.exec(query.limit(limit)).all())
+
+    step_ids = [item.job_step_id for item in items]
+    if not step_ids:
+        return []
+
+    steps = session.exec(select(JobStep).where(JobStep.id.in_(step_ids))).all()
+    steps_by_id = {step.id: step for step in steps if step.id is not None}
+
+    job_ids = [item.job_id for item in items]
+    jobs = session.exec(select(Job).where(Job.id.in_(job_ids))).all()
+    jobs_by_id = {job.id: job for job in jobs if job.id is not None}
+
+    repo_ids = [job.repo_id for job in jobs]
+    repos = session.exec(select(Repo).where(Repo.id.in_(repo_ids))).all()
+    repos_by_id = {repo.id: repo for repo in repos if repo.id is not None}
+
+    script_ids = [step.script_id for step in steps]
+    scripts_by_id = {}
+    if script_ids:
+        scripts = session.exec(select(Script).where(Script.id.in_(script_ids))).all()
+        scripts_by_id = {script.id: script for script in scripts if script.id is not None}
+
+    details = []
+    for item in items:
+        step = steps_by_id.get(item.job_step_id)
+        job = jobs_by_id.get(item.job_id)
+        repo = repos_by_id.get(job.repo_id) if job else None
+        script = scripts_by_id.get(step.script_id) if step else None
+        details.append(
+            {
+                "queue_item": worker_queue_to_read(item),
+                "repo_id": repo.id if repo else None,
+                "repo_name": repo.name if repo else None,
+                "provider": repo.provider if repo else None,
+                "release": repo.release if repo else None,
+                "step_order": step.order if step else None,
+                "script_name": script.name if script else None,
+            }
+        )
+
+    return details
 
 def enqueue_next_step_after_success(
     job: Job,

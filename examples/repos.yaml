@@ -20,6 +20,9 @@ defaults:
     checks: [metadata]
   retention:
     keep_last: 7
+  schedule:
+    enabled: true
+    type: daily
 repos:
   debian:
     jessie:
@@ -39,6 +42,8 @@ repos:
           origin: Debian
           codename: jessie
           suite: unstable
+        schedule:
+          enabled: false
       debian-08-jessie-backports:
         mirror:
           archive_url: http://192.168.1.10/archive/debian
@@ -55,6 +60,8 @@ repos:
           origin: Debian
           codename: jessie-backports
           suite: unstable
+        schedule:
+          enabled: false
     stretch:
       debian-09-stretch:
         mirror:
@@ -1028,6 +1035,9 @@ repos:
           origin: Zabbix
           codename: buster
           suite: zabbix
+        schedule:
+          enabled: true
+          type: weekly
     bullseye:
       zabbix-7.0-deb11:
         mirror:
@@ -1044,6 +1054,9 @@ repos:
           origin: Zabbix
           codename: bullseye
           suite: zabbix
+        schedule:
+          enabled: true
+          type: weekly
     bookworm:
       zabbix-7.0-deb12:
         mirror:
@@ -1060,6 +1073,9 @@ repos:
           origin: Zabbix
           codename: bookworm
           suite: zabbix
+        schedule:
+          enabled: true
+          type: weekly
     trixie:
       zabbix-7.0-deb13:
         mirror:
@@ -1076,6 +1092,9 @@ repos:
           origin: Zabbix
           codename: trixie
           suite: zabbix
+        schedule:
+          enabled: true
+          type: weekly
     bionic:
       zabbix-7.0-ubu18:
         mirror:
@@ -1092,6 +1111,9 @@ repos:
           origin: Zabbix
           codename: bionic
           suite: zabbix
+        schedule:
+          enabled: true
+          type: weekly
     focal:
       zabbix-7.0-ubu20:
         mirror:
@@ -1108,6 +1130,9 @@ repos:
           origin: Zabbix
           codename: focal
           suite: zabbix
+        schedule:
+          enabled: true
+          type: weekly
     jammy:
       zabbix-7.0-ubu22:
         mirror:
@@ -1124,6 +1149,9 @@ repos:
           origin: Zabbix
           codename: jammy
           suite: zabbix
+        schedule:
+          enabled: true
+          type: weekly
     noble:
       zabbix-7.0-ubu24:
         mirror:
@@ -1140,3 +1168,6 @@ repos:
           origin: Zabbix
           codename: noble
           suite: zabbix
+        schedule:
+          enabled: true
+          type: weekly

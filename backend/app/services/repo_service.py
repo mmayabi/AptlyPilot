@@ -1,10 +1,14 @@
-from datetime import datetime, UTC
+import hashlib
+from datetime import UTC, datetime, timedelta
 from copy import deepcopy
 from typing import Any
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
+from app.models.job import Job, JobDefinitionStatus, JobStep
+from app.models.job_schedule import JobSchedule, JobScheduleStatus, JobScheduleType
 from app.models.repo import Repo
+from app.models.template import JobStepTemplate, JobTemplate
 from app.repositories.repo_repo import (
     create_repo,
     get_repo_by_name,
@@ -25,6 +29,8 @@ from app.schemas.repo import (
     RepoSyncResponse,
     ResolvedRepoConfig,
     RetentionConfig,
+    ScheduleConfig,
+    ScheduleType,
     SnapshotConfig,
     TestConfig,
 )
@@ -32,6 +38,8 @@ from app.services.config_loader_service import (
     load_and_validate_repos_config,
     validate_repos_config,
 )
+
+PIPELINE_TEMPLATE_NAME = "aptly.repository.pipeline"
 
 
 def _merge_model(default_data: dict[str, Any], override_model) -> dict[str, Any]:
@@ -107,6 +115,12 @@ def merge_repo_config(
     )
     retention = RetentionConfig.model_validate(retention_data)
 
+    schedule_data = _merge_model(
+        defaults.schedule.model_dump(mode="json"),
+        repo_config.schedule,
+    )
+    schedule = ScheduleConfig.model_validate(schedule_data)
+
     validate_resolved_repo_config(repo_name, mirror, publish)
 
     raw_config = {
@@ -119,6 +133,7 @@ def merge_repo_config(
         "publish": publish.model_dump(mode="json"),
         "test": test.model_dump(mode="json"),
         "retention": retention.model_dump(mode="json"),
+        "schedule": schedule.model_dump(mode="json"),
     }
 
     return ResolvedRepoConfig(
@@ -131,6 +146,7 @@ def merge_repo_config(
         publish=publish,
         test=test,
         retention=retention,
+        schedule=schedule,
         raw_config=raw_config,
     )
 
@@ -162,6 +178,7 @@ def repo_to_read(repo: Repo) -> RepoRead:
     publish = PublishConfig.model_validate(raw.get("publish", {}))
     test = TestConfig.model_validate(raw.get("test", {}))
     retention = RetentionConfig.model_validate(raw.get("retention", {}))
+    schedule = ScheduleConfig.model_validate(raw.get("schedule", {}))
 
     return RepoRead(
         id=repo.id,
@@ -178,6 +195,7 @@ def repo_to_read(repo: Repo) -> RepoRead:
         publish=publish,
         test=test,
         retention=retention,
+        schedule=schedule,
         raw_config=repo.raw_config,
         created_at=repo.created_at,
         updated_at=repo.updated_at,
@@ -266,6 +284,204 @@ def _apply_resolved_config_to_repo(repo: Repo, resolved: ResolvedRepoConfig) -> 
     return repo
 
 
+def get_pipeline_template(session: Session) -> JobTemplate:
+    template = session.exec(
+        select(JobTemplate).where(JobTemplate.name == PIPELINE_TEMPLATE_NAME)
+    ).first()
+
+    if template is None:
+        raise RuntimeError(
+            f"Default pipeline template not found: {PIPELINE_TEMPLATE_NAME}"
+        )
+
+    return template
+
+
+def get_template_steps(
+    session: Session,
+    template_id: int,
+) -> list[JobStepTemplate]:
+    return list(
+        session.exec(
+            select(JobStepTemplate)
+            .where(JobStepTemplate.template_id == template_id)
+            .order_by(JobStepTemplate.order, JobStepTemplate.id)
+        ).all()
+    )
+
+
+def ensure_pipeline_job_for_repo(
+    session: Session,
+    repo: Repo,
+) -> Job:
+    template = get_pipeline_template(session)
+
+    job = session.exec(
+        select(Job).where(
+            Job.repo_id == repo.id,
+            Job.template_id == template.id,
+        )
+    ).first()
+
+    if job is None:
+        job = Job(
+            template_id=template.id,
+            repo_id=repo.id,
+            status=JobDefinitionStatus.ACTIVE,
+            created_by_user_id=None,
+        )
+        session.add(job)
+        session.flush()
+
+    template_steps = get_template_steps(session, template.id)
+    existing_steps = session.exec(
+        select(JobStep).where(JobStep.job_id == job.id)
+    ).all()
+    existing_by_template_step_id = {
+        step.step_template_id: step
+        for step in existing_steps
+    }
+    template_step_ids = {step.id for step in template_steps}
+
+    for step in existing_steps:
+        if step.step_template_id not in template_step_ids:
+            session.delete(step)
+
+    for template_step in template_steps:
+        existing_step = existing_by_template_step_id.get(template_step.id)
+
+        if existing_step:
+            existing_step.script_id = template_step.script_id
+            existing_step.order = template_step.order
+            session.add(existing_step)
+            continue
+
+        session.add(
+            JobStep(
+                job_id=job.id,
+                step_template_id=template_step.id,
+                script_id=template_step.script_id,
+                order=template_step.order,
+                params={},
+            )
+        )
+
+    job.status = JobDefinitionStatus.ACTIVE
+    job.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    session.add(job)
+    session.flush()
+
+    return job
+
+
+def get_schedule_type(schedule: ScheduleConfig) -> JobScheduleType:
+    if schedule.type == ScheduleType.WEEKLY:
+        return JobScheduleType.WEEKLY
+
+    return JobScheduleType.DAILY
+
+
+def stable_repo_offset(repo_name: str) -> int:
+    digest = hashlib.sha256(repo_name.encode("utf-8")).hexdigest()
+
+    return int(digest[:12], 16)
+
+
+def compute_next_config_run_at(
+    repo_name: str,
+    schedule_type: JobScheduleType,
+    now: datetime | None = None,
+) -> datetime:
+    if now is None:
+        now = datetime.utcnow()
+
+    offset = stable_repo_offset(repo_name)
+    minute_of_day = offset % 1440
+    hour = minute_of_day // 60
+    minute = minute_of_day % 60
+
+    if schedule_type == JobScheduleType.WEEKLY:
+        day_of_week = (offset // 1440) % 7
+        days_ahead = (day_of_week - now.weekday()) % 7
+        candidate = (
+            now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            + timedelta(days=days_ahead)
+        )
+
+        if candidate <= now:
+            candidate += timedelta(weeks=1)
+
+        return candidate
+
+    candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+    if candidate <= now:
+        candidate += timedelta(days=1)
+
+    return candidate
+
+
+def get_schedule_for_job(
+    session: Session,
+    job_id: int,
+) -> JobSchedule | None:
+    return session.exec(
+        select(JobSchedule)
+        .where(JobSchedule.job_id == job_id)
+        .order_by(JobSchedule.id)
+    ).first()
+
+
+def ensure_config_schedule_for_job(
+    session: Session,
+    *,
+    repo: Repo,
+    job: Job,
+    schedule_config: ScheduleConfig,
+) -> JobSchedule | None:
+    existing_schedule = get_schedule_for_job(session, job.id)
+
+    if not schedule_config.enabled:
+        if existing_schedule:
+            existing_schedule.status = JobScheduleStatus.DISABLED
+            existing_schedule.updated_at = datetime.utcnow()
+            session.add(existing_schedule)
+
+        return existing_schedule
+
+    schedule_type = get_schedule_type(schedule_config)
+    next_run_at = compute_next_config_run_at(
+        repo_name=repo.name,
+        schedule_type=schedule_type,
+    )
+
+    if existing_schedule is None:
+        existing_schedule = JobSchedule(
+            job_id=job.id,
+            schedule_type=schedule_type,
+            status=JobScheduleStatus.ENABLED,
+            next_run_at=next_run_at,
+            created_by_user_id=None,
+        )
+        session.add(existing_schedule)
+        return existing_schedule
+
+    type_changed = existing_schedule.schedule_type != schedule_type
+    is_disabled = existing_schedule.status == JobScheduleStatus.DISABLED
+    is_due_or_past = existing_schedule.next_run_at <= datetime.utcnow()
+
+    existing_schedule.schedule_type = schedule_type
+    existing_schedule.status = JobScheduleStatus.ENABLED
+
+    if type_changed or is_disabled or is_due_or_past:
+        existing_schedule.next_run_at = next_run_at
+
+    existing_schedule.updated_at = datetime.utcnow()
+    session.add(existing_schedule)
+
+    return existing_schedule
+
+
 def sync_repos_from_config(session: Session) -> RepoSyncResponse:
     config_file = load_and_validate_repos_config()
     flattened_repos = flatten_repos_config(config_file)
@@ -286,7 +502,15 @@ def sync_repos_from_config(session: Session) -> RepoSyncResponse:
                 mirror_distribution=resolved.mirror.distribution,
             )
             repo = _apply_resolved_config_to_repo(repo, resolved)
-            create_repo(session, repo)
+            repo = create_repo(session, repo)
+            job = ensure_pipeline_job_for_repo(session, repo)
+            ensure_config_schedule_for_job(
+                session=session,
+                repo=repo,
+                job=job,
+                schedule_config=resolved.schedule,
+            )
+            session.commit()
             created += 1
             results.append(
                 RepoSyncItemResult(
@@ -299,7 +523,15 @@ def sync_repos_from_config(session: Session) -> RepoSyncResponse:
             continue
 
         repo = _apply_resolved_config_to_repo(existing_repo, resolved)
-        save_repo(session, repo)
+        repo = save_repo(session, repo)
+        job = ensure_pipeline_job_for_repo(session, repo)
+        ensure_config_schedule_for_job(
+            session=session,
+            repo=repo,
+            job=job,
+            schedule_config=resolved.schedule,
+        )
+        session.commit()
         updated += 1
         results.append(
             RepoSyncItemResult(

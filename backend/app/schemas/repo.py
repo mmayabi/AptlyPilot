@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -91,12 +92,23 @@ class RetentionConfig(BaseModel):
         return value
 
 
+class ScheduleType(StrEnum):
+    DAILY = "daily"
+    WEEKLY = "weekly"
+
+
+class ScheduleConfig(BaseModel):
+    enabled: bool = True
+    type: ScheduleType = ScheduleType.DAILY
+
+
 class DefaultsConfig(BaseModel):
     mirror: MirrorDefaultsConfig = Field(default_factory=MirrorDefaultsConfig)
     snapshot: SnapshotConfig = Field(default_factory=SnapshotConfig)
     publish: PublishDefaultsConfig = Field(default_factory=PublishDefaultsConfig)
     test: TestConfig = Field(default_factory=TestConfig)
     retention: RetentionConfig = Field(default_factory=RetentionConfig)
+    schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
 
 
 class RepoItemConfig(BaseModel):
@@ -111,6 +123,7 @@ class RepoItemConfig(BaseModel):
     publish: PublishConfig | None = None
     test: TestConfig | None = None
     retention: RetentionConfig | None = None
+    schedule: ScheduleConfig | None = None
 
 
 class ReposConfigFile(BaseModel):
@@ -150,6 +163,7 @@ class ResolvedRepoConfig(BaseModel):
     publish: PublishConfig
     test: TestConfig
     retention: RetentionConfig
+    schedule: ScheduleConfig
     raw_config: dict[str, Any]
 
 
@@ -170,6 +184,7 @@ class RepoRead(BaseModel):
     publish: PublishConfig
     test: TestConfig
     retention: RetentionConfig
+    schedule: ScheduleConfig
 
     raw_config: dict[str, Any]
 

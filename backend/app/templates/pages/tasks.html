@@ -1,0 +1,82 @@
+{% extends "layouts/layout.html" %}
+
+{% block title %}
+Tasks
+{% endblock %}
+
+{% block content %}
+
+{% with
+title="Tasks",
+subtitle="Inspect queued and completed pipeline executions",
+actions=[]
+%}
+{% include "components/page_header.html" %}
+{% endwith %}
+
+<div class="space-y-6">
+    <form
+        id="task-filter-form"
+        class="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-4"
+        hx-get="/tasks/runs"
+        hx-target="#task-runs"
+        hx-trigger="change, submit"
+        hx-swap="innerHTML">
+        <label class="block">
+            <span class="text-xs font-semibold uppercase text-slate-500">Status</span>
+            <select
+                name="status_filter"
+                class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+                <option value="">All</option>
+                {% for value in ["queued", "running", "success", "failed", "canceled", "skipped"] %}
+                <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ value|title }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label class="block">
+            <span class="text-xs font-semibold uppercase text-slate-500">Repository</span>
+            <select
+                name="repo_id"
+                class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+                <option value="">All</option>
+                {% for repo in repos %}
+                <option value="{{ repo.id }}" {% if repo_id == repo.id %}selected{% endif %}>
+                    {{ repo.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label class="block">
+            <span class="text-xs font-semibold uppercase text-slate-500">Requested By</span>
+            <select
+                name="requested_by"
+                class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+                <option value="">All</option>
+                {% for value in ["manual", "scheduler", "system", "retry"] %}
+                <option value="{{ value }}" {% if requested_by == value %}selected{% endif %}>{{ value|title }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <div class="flex items-end">
+            <button
+                type="submit"
+                class="inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                Refresh
+            </button>
+        </div>
+    </form>
+
+    <div
+        id="task-runs"
+        hx-get="/tasks/runs"
+        hx-trigger="every 10s"
+        hx-include="#task-filter-form"
+        hx-swap="innerHTML">
+        {% include "components/task_runs_table.html" %}
+    </div>
+</div>
+
+{% endblock %}

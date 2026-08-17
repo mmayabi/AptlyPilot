@@ -1,0 +1,77 @@
+{% if schedule_details %}
+<div class="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+    <table class="min-w-[64rem] table-fixed divide-y divide-slate-100 text-sm">
+        <colgroup>
+            <col class="w-20">
+            <col class="w-64">
+            <col class="w-28">
+            <col class="w-28">
+            <col class="w-44">
+            <col class="w-44">
+            <col class="w-44">
+            <col class="w-40">
+        </colgroup>
+        <thead class="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
+            <tr>
+                <th class="px-3 py-2">ID</th>
+                <th class="px-3 py-2">Repository</th>
+                <th class="px-3 py-2">Type</th>
+                <th class="px-3 py-2">Status</th>
+                <th class="px-3 py-2">Next Run</th>
+                <th class="px-3 py-2">Last Run</th>
+                <th class="px-3 py-2">Latest Queue</th>
+                <th class="px-3 py-2 text-right">Action</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for item in schedule_details %}
+            {% set schedule = item.schedule %}
+            {% set latest = item.latest_queue_item %}
+            <tr class="align-top">
+                <td class="px-3 py-3 font-medium text-slate-900">#{{ schedule.id }}</td>
+                <td class="px-3 py-3">
+                    <div class="font-medium text-slate-900">{{ item.repo_name or "-" }}</div>
+                    <div class="text-xs text-slate-500">{{ item.provider or "-" }} / {{ item.release or "-" }}</div>
+                    <div class="text-xs text-slate-400">job #{{ item.job_id or "-" }}</div>
+                </td>
+                <td class="px-3 py-3 text-slate-700">{{ schedule.schedule_type|title }}</td>
+                <td class="px-3 py-3">
+                    {% if schedule.status == "enabled" %}
+                    <span class="inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">Enabled</span>
+                    {% else %}
+                    <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Disabled</span>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-3 text-slate-600">{{ schedule.next_run_at or "-" }}</td>
+                <td class="px-3 py-3 text-slate-600">{{ schedule.last_run_at or "-" }}</td>
+                <td class="px-3 py-3">
+                    {% if latest %}
+                    <div class="font-medium text-slate-900">#{{ latest.id }}</div>
+                    <div class="text-xs text-slate-500">{{ latest.status|title }}</div>
+                    <div class="text-xs text-slate-400">execution {{ latest.execution_id[:8] }}</div>
+                    {% else %}
+                    <span class="text-slate-400">-</span>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-3 text-right">
+                    <div id="schedule-run-result-{{ schedule.id }}" class="mb-2 text-left"></div>
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                        hx-post="/schedules/{{ schedule.id }}/run-now"
+                        hx-target="#schedule-run-result-{{ schedule.id }}"
+                        hx-swap="innerHTML"
+                        hx-on::after-request="htmx.trigger(document.body, 'schedules-refresh')">
+                        Run Now
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
+    No schedules found. Run Sync From Config to create config-managed schedules.
+</div>
+{% endif %}
