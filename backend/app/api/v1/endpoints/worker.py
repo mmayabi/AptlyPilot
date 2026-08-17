@@ -7,6 +7,8 @@ from app.models.user import User
 from app.models.worker_queue import WorkerQueueStatus
 from app.schemas.worker_queue import WorkerQueueRead, WorkerRunOnceResponse
 from app.services.worker_queue_service import (
+    cancel_pipeline_execution,
+    cancel_queue_item,
     enqueue_job,
     list_worker_queue,
     worker_queue_to_read,
@@ -70,6 +72,26 @@ def list_worker_queue_endpoint(
         schedule_id=schedule_id,
         execution_id=execution_id,
     )
+    return [worker_queue_to_read(item) for item in items]
+
+
+@router.post("/queue/{queue_item_id}/cancel", response_model=WorkerQueueRead)
+def cancel_worker_queue_item_endpoint(
+    queue_item_id: int,
+    session: Session = Depends(get_db_session),
+    current_user: User = Depends(require_operator),
+):
+    item = cancel_queue_item(queue_item_id=queue_item_id, session=session)
+    return worker_queue_to_read(item)
+
+
+@router.post("/executions/{execution_id}/cancel", response_model=list[WorkerQueueRead])
+def cancel_worker_execution_endpoint(
+    execution_id: str,
+    session: Session = Depends(get_db_session),
+    current_user: User = Depends(require_operator),
+):
+    items = cancel_pipeline_execution(execution_id=execution_id, session=session)
     return [worker_queue_to_read(item) for item in items]
 
 

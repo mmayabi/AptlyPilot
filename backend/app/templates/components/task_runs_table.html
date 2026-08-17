@@ -2,7 +2,7 @@
 <div class="space-y-3">
     {% for run in pipeline_runs %}
     <section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <div class="grid gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 lg:grid-cols-[1.4fr_1.1fr_8rem_8rem_10rem_10rem]">
+        <div class="grid gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 lg:grid-cols-[1.4fr_1.1fr_8rem_8rem_10rem_10rem_8rem]">
             <div>
                 <div class="font-semibold text-slate-900">{{ run.repo_name or "-" }}</div>
                 <div class="text-xs text-slate-500">{{ run.provider or "-" }} / {{ run.release or "-" }}</div>
@@ -41,6 +41,19 @@
             <div>
                 <div class="text-xs font-semibold uppercase text-slate-500">Finished</div>
                 <div class="mt-1 text-sm text-slate-700">{{ run.finished_at or "-" }}</div>
+            </div>
+            <div class="flex items-end justify-start lg:justify-end">
+                {% if run.status == "queued" or run.status == "running" %}
+                <button
+                    type="button"
+                    class="inline-flex items-center rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                    hx-post="/tasks/executions/{{ run.execution_id }}/cancel"
+                    hx-target="#task-runs"
+                    hx-include="#task-filter-form"
+                    hx-swap="innerHTML">
+                    Cancel
+                </button>
+                {% endif %}
             </div>
         </div>
 

@@ -33,6 +33,21 @@ def compute_next_run_at(current_run_at: datetime, schedule_type: JobScheduleType
     return None
 
 
+def compute_next_future_run_at(
+    current_run_at: datetime,
+    schedule_type: JobScheduleType,
+    now: datetime | None = None,
+) -> datetime | None:
+    if now is None:
+        now = datetime.utcnow()
+
+    next_run_at = compute_next_run_at(current_run_at, schedule_type)
+    while next_run_at is not None and next_run_at <= now:
+        next_run_at = compute_next_run_at(next_run_at, schedule_type)
+
+    return next_run_at
+
+
 def has_active_queue_for_job(job_id: int, session: Session) -> bool:
     active = session.exec(
         select(WorkerQueueItem).where(
@@ -59,6 +74,7 @@ def get_due_schedules(session: Session, limit: int = 20) -> list[JobSchedule]:
 def process_due_schedules(session: Session, limit: int = 20) -> int:
     due_schedules = get_due_schedules(session, limit=limit)
     processed = 0
+    now = datetime.utcnow()
 
     for schedule in due_schedules:
         if has_active_queue_for_job(schedule.job_id, session):
@@ -76,13 +92,17 @@ def process_due_schedules(session: Session, limit: int = 20) -> int:
         )
 
         schedule.last_run_at = schedule.next_run_at
-        next_run_at = compute_next_run_at(schedule.next_run_at, schedule.schedule_type)
+        next_run_at = compute_next_future_run_at(
+            current_run_at=schedule.next_run_at,
+            schedule_type=schedule.schedule_type,
+            now=now,
+        )
         if next_run_at is None:
             schedule.status = JobScheduleStatus.DISABLED
         else:
             schedule.next_run_at = next_run_at
 
-        schedule.updated_at = datetime.utcnow()
+        schedule.updated_at = now
         session.add(schedule)
         session.commit()
 

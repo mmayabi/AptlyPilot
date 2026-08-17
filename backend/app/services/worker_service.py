@@ -51,6 +51,15 @@ def mark_queue_item_running(item: WorkerQueueItem, worker_id: str, session: Sess
 
 def mark_step_success(item: WorkerQueueItem, log: str, session: Session) -> None:
     now = datetime.utcnow()
+    session.refresh(item)
+    if item.status == WorkerQueueStatus.CANCELED:
+        item.log = item.log or log
+        item.finished_at = item.finished_at or now
+        item.updated_at = now
+        session.add(item)
+        session.commit()
+        return
+
     item.status = WorkerQueueStatus.SUCCESS
     item.finished_at = now
     item.log = log
@@ -65,10 +74,20 @@ def mark_step_success(item: WorkerQueueItem, log: str, session: Session) -> None
         session.add(job)
 
     session.commit()
-    enqueue_next_step_after_success(job, step, item, session)
+    if job and step:
+        enqueue_next_step_after_success(job, step, item, session)
 
 def mark_step_failed(item: WorkerQueueItem, log: str, error_message: str, session: Session, retry_allowed: bool):
     now = datetime.utcnow()
+    session.refresh(item)
+    if item.status == WorkerQueueStatus.CANCELED:
+        item.log = item.log or log
+        item.finished_at = item.finished_at or now
+        item.updated_at = now
+        session.add(item)
+        session.commit()
+        return
+
     if retry_allowed and item.attempt_count < item.max_attempts:
         item.status = WorkerQueueStatus.QUEUED
         item.run_after = now + timedelta(seconds=300)

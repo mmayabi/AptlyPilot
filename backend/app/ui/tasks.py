@@ -7,8 +7,11 @@ from app.api.deps import get_db_session
 from app.models.user import User
 from app.models.worker_queue import WorkerQueueRequestedBy, WorkerQueueStatus
 from app.services.repo_service import get_all_repos
-from app.services.worker_queue_service import list_worker_pipeline_run_details
-from app.ui.deps import get_web_viewer
+from app.services.worker_queue_service import (
+    cancel_pipeline_execution,
+    list_worker_pipeline_run_details,
+)
+from app.ui.deps import get_web_operator, get_web_viewer
 
 router = APIRouter(tags=["UI-Tasks"])
 
@@ -94,6 +97,38 @@ def task_runs(
     session: Session = Depends(get_db_session),
     current_user: User = Depends(get_web_viewer),
 ):
+    pipeline_runs = _load_pipeline_runs(
+        session=session,
+        status_filter=_parse_status_filter(status_filter),
+        repo_id=_parse_repo_id(repo_id),
+        requested_by=_parse_requested_by(requested_by),
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="components/task_runs_table.html",
+        context={
+            "current_user": current_user,
+            "pipeline_runs": pipeline_runs,
+        },
+    )
+
+
+@router.post("/tasks/executions/{execution_id}/cancel", response_class=HTMLResponse)
+def cancel_task_execution(
+    request: Request,
+    execution_id: str,
+    status_filter: str | None = Query(default=None),
+    repo_id: str | None = Query(default=None),
+    requested_by: str | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+    current_user: User = Depends(get_web_operator),
+):
+    cancel_pipeline_execution(
+        execution_id=execution_id,
+        session=session,
+    )
+
     pipeline_runs = _load_pipeline_runs(
         session=session,
         status_filter=_parse_status_filter(status_filter),

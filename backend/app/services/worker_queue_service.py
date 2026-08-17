@@ -119,6 +119,75 @@ def enqueue_repository_pipeline(
     )
 
 
+def cancel_queue_item(
+    queue_item_id: int,
+    session: Session,
+) -> WorkerQueueItem:
+    item = session.get(WorkerQueueItem, queue_item_id)
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Worker queue item not found: {queue_item_id}",
+        )
+
+    if item.status not in [WorkerQueueStatus.QUEUED, WorkerQueueStatus.RUNNING]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Only queued or running items can be canceled. Current status: {item.status}",
+        )
+
+    now = datetime.utcnow()
+    item.status = WorkerQueueStatus.CANCELED
+    item.finished_at = now
+    item.error_message = "Canceled by user"
+    item.updated_at = now
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+
+    return item
+
+
+def cancel_pipeline_execution(
+    execution_id: str,
+    session: Session,
+) -> list[WorkerQueueItem]:
+    items = session.exec(
+        select(WorkerQueueItem)
+        .where(WorkerQueueItem.execution_id == execution_id)
+        .where(
+            WorkerQueueItem.status.in_(
+                [WorkerQueueStatus.QUEUED, WorkerQueueStatus.RUNNING]
+            )
+        )
+        .order_by(WorkerQueueItem.id)
+    ).all()
+
+    if not items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No queued or running items found for execution: {execution_id}",
+        )
+
+    now = datetime.utcnow()
+    for item in items:
+        item.status = WorkerQueueStatus.CANCELED
+        item.finished_at = now
+        item.error_message = "Canceled by user"
+        item.updated_at = now
+        session.add(item)
+
+    session.commit()
+
+    return list(
+        session.exec(
+            select(WorkerQueueItem)
+            .where(WorkerQueueItem.execution_id == execution_id)
+            .order_by(WorkerQueueItem.id)
+        ).all()
+    )
+
+
 def list_worker_queue_for_repo(
     repo_id: int,
     session: Session,
@@ -230,10 +299,10 @@ def get_pipeline_status(items: list[WorkerQueueRead]) -> str:
         return WorkerQueueStatus.RUNNING
     if any(status == WorkerQueueStatus.QUEUED for status in statuses):
         return WorkerQueueStatus.QUEUED
+    if any(status == WorkerQueueStatus.CANCELED for status in statuses):
+        return WorkerQueueStatus.CANCELED
     if statuses and all(status == WorkerQueueStatus.SUCCESS for status in statuses):
         return WorkerQueueStatus.SUCCESS
-    if statuses and all(status == WorkerQueueStatus.CANCELED for status in statuses):
-        return WorkerQueueStatus.CANCELED
     if statuses and all(status == WorkerQueueStatus.SKIPPED for status in statuses):
         return WorkerQueueStatus.SKIPPED
 
