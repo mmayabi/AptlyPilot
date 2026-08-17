@@ -1,0 +1,113 @@
+{% extends "layouts/layout.html" %}
+
+{% block title %}
+Settings
+{% endblock %}
+
+{% block content %}
+
+{% with
+title="Settings",
+subtitle="Read-only runtime and repository configuration",
+actions=[]
+%}
+{% include "components/page_header.html" %}
+{% endwith %}
+
+<div class="space-y-6">
+    <section class="rounded-lg border border-slate-200 bg-white">
+        <div class="border-b border-slate-100 px-5 py-4">
+            <h2 class="text-base font-semibold text-slate-900">Runtime Settings</h2>
+        </div>
+        <dl class="divide-y divide-slate-100 text-sm">
+            {% for item in runtime_settings %}
+            <div class="grid gap-3 px-5 py-3 md:grid-cols-[16rem_1fr]">
+                <dt class="font-medium text-slate-500">{{ item.key }}</dt>
+                <dd class="break-all font-mono text-slate-900">{{ item.value }}</dd>
+            </div>
+            {% endfor %}
+        </dl>
+    </section>
+
+    <section class="rounded-lg border border-slate-200 bg-white">
+        <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <div>
+                <h2 class="text-base font-semibold text-slate-900">Repository Config</h2>
+                <p class="mt-1 break-all font-mono text-sm text-slate-500">{{ config_path }}</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                {% if config_path_exists %}
+                <span class="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                    File Found
+                </span>
+                {% else %}
+                <span class="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+                    File Missing
+                </span>
+                {% endif %}
+
+                {% if config_validation.valid %}
+                <span class="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                    Valid
+                </span>
+                {% else %}
+                <span class="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+                    Invalid
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid gap-4 p-5 lg:grid-cols-[18rem_1fr]">
+            <div class="space-y-4">
+                <div class="rounded-lg border border-slate-200 p-4">
+                    <div class="text-xs font-semibold uppercase text-slate-500">Repositories</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-900">
+                        {{ config_validation.repo_count }}
+                    </div>
+                </div>
+
+                {% if config_validation.errors %}
+                <div class="rounded-lg border border-red-200 bg-red-50 p-4">
+                    <div class="text-sm font-semibold text-red-800">Validation Errors</div>
+                    <ul class="mt-2 space-y-2 text-sm text-red-700">
+                        {% for error in config_validation.errors %}
+                        <li class="break-words">{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if config_validation.repos %}
+                <div class="rounded-lg border border-slate-200 p-4">
+                    <div class="text-sm font-semibold text-slate-900">Resolved Repositories</div>
+                    <div class="mt-3 max-h-72 overflow-auto">
+                        <ul class="space-y-1 text-sm text-slate-600">
+                            {% for repo in config_validation.repos %}
+                            <li class="break-all font-mono text-xs">{{ repo }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div>
+                <div class="rounded-lg border border-slate-200 bg-slate-950">
+                    <div class="border-b border-slate-800 px-4 py-3 text-xs font-semibold uppercase text-slate-400">
+                        Config Content
+                    </div>
+                    {% if config_read_error %}
+                    <div class="p-4 text-sm text-red-300">{{ config_read_error }}</div>
+                    {% elif config_content %}
+                    <pre class="max-h-[42rem] overflow-auto p-4 text-xs leading-5 text-slate-100">{{ config_content }}</pre>
+                    {% else %}
+                    <div class="p-4 text-sm text-slate-400">No config content found.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+{% endblock %}

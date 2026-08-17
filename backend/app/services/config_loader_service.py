@@ -18,6 +18,11 @@ def load_repos_config_raw() -> dict:
         return yaml.safe_load(file) or {}
 
 
+def load_repos_config_text() -> str:
+    config_path = get_repos_config_path()
+    return config_path.read_text(encoding="utf-8")
+
+
 def load_and_validate_repos_config() -> ReposConfigFile:
     raw_config = load_repos_config_raw()
     return ReposConfigFile.model_validate(raw_config)
