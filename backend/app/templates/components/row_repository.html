@@ -47,9 +47,15 @@
 
     <td class="px-5 py-4">
 
+        {% if repo.operational_status != "idle" %}
+        {% with status=repo.operational_status %}
+        {% include "components/operation_status_badge.html" %}
+        {% endwith %}
+        {% else %}
         {% with mirror=repo.mirror_enabled, snapshot=repo.snapshot_enabled, publish=repo.publish_enabled %}
         {% include "components/pipeline_badge.html" %}
         {% endwith %}
+        {% endif %}
 
     </td>
 

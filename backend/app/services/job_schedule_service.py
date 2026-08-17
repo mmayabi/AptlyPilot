@@ -9,6 +9,7 @@ from app.models.worker_queue import WorkerQueueItem
 from app.models.job import Job
 from app.models.job_schedule import JobSchedule, JobScheduleStatus
 from app.models.repo import Repo
+from app.models.template import JobTemplate
 from app.schemas.job_schedule import JobScheduleCreate, JobScheduleRead, JobScheduleUpdate
 from app.services.worker_queue_service import worker_queue_to_read
 
@@ -58,6 +59,18 @@ def list_schedule_details(
     jobs = session.exec(select(Job).where(Job.id.in_(job_ids))).all()
     jobs_by_id = {job.id: job for job in jobs if job.id is not None}
 
+    template_ids = [job.template_id for job in jobs]
+    templates_by_id = {}
+    if template_ids:
+        job_templates = session.exec(
+            select(JobTemplate).where(JobTemplate.id.in_(template_ids))
+        ).all()
+        templates_by_id = {
+            job_template.id: job_template
+            for job_template in job_templates
+            if job_template.id is not None
+        }
+
     repo_ids = [job.repo_id for job in jobs]
     repos = session.exec(select(Repo).where(Repo.id.in_(repo_ids))).all()
     repos_by_id = {repo.id: repo for repo in repos if repo.id is not None}
@@ -66,6 +79,7 @@ def list_schedule_details(
     for schedule in schedules:
         job = jobs_by_id.get(schedule.job_id)
         repo = repos_by_id.get(job.repo_id) if job else None
+        job_template = templates_by_id.get(job.template_id) if job else None
 
         if repo_id is not None and (repo is None or repo.id != repo_id):
             continue
@@ -80,6 +94,8 @@ def list_schedule_details(
             {
                 "schedule": schedule_to_read(schedule),
                 "job_id": job.id if job else None,
+                "template_id": job_template.id if job_template else None,
+                "template_name": job_template.name if job_template else None,
                 "repo_id": repo.id if repo else None,
                 "repo_name": repo.name if repo else None,
                 "provider": repo.provider if repo else None,

@@ -7,7 +7,7 @@ from app.api.deps import get_db_session
 from app.models.user import User
 from app.models.worker_queue import WorkerQueueRequestedBy, WorkerQueueStatus
 from app.services.repo_service import get_all_repos
-from app.services.worker_queue_service import list_worker_queue_run_details
+from app.services.worker_queue_service import list_worker_pipeline_run_details
 from app.ui.deps import get_web_viewer
 
 router = APIRouter(tags=["UI-Tasks"])
@@ -33,13 +33,13 @@ def _parse_requested_by(value: str | None) -> WorkerQueueRequestedBy | None:
     return WorkerQueueRequestedBy(value)
 
 
-def _load_task_runs(
+def _load_pipeline_runs(
     session: Session,
     status_filter: WorkerQueueStatus | None,
     repo_id: int | None,
     requested_by: WorkerQueueRequestedBy | None,
 ) -> list[dict]:
-    return list_worker_queue_run_details(
+    return list_worker_pipeline_run_details(
         session=session,
         status_filter=status_filter,
         repo_id=repo_id,
@@ -61,7 +61,7 @@ def tasks(
     parsed_repo_id = _parse_repo_id(repo_id)
     parsed_requested_by = _parse_requested_by(requested_by)
     repos = get_all_repos(session)
-    run_details = _load_task_runs(
+    pipeline_runs = _load_pipeline_runs(
         session=session,
         status_filter=parsed_status_filter,
         repo_id=parsed_repo_id,
@@ -77,7 +77,7 @@ def tasks(
             "active_page": "tasks",
             "current_user": current_user,
             "repos": repos,
-            "run_details": run_details,
+            "pipeline_runs": pipeline_runs,
             "status_filter": parsed_status_filter,
             "repo_id": parsed_repo_id,
             "requested_by": parsed_requested_by,
@@ -94,7 +94,7 @@ def task_runs(
     session: Session = Depends(get_db_session),
     current_user: User = Depends(get_web_viewer),
 ):
-    run_details = _load_task_runs(
+    pipeline_runs = _load_pipeline_runs(
         session=session,
         status_filter=_parse_status_filter(status_filter),
         repo_id=_parse_repo_id(repo_id),
@@ -106,6 +106,6 @@ def task_runs(
         name="components/task_runs_table.html",
         context={
             "current_user": current_user,
-            "run_details": run_details,
+            "pipeline_runs": pipeline_runs,
         },
     )

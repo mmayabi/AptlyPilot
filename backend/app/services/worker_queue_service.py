@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from app.models.job import Job, JobStep
 from app.models.repo import Repo
 from app.models.script import Script
+from app.models.template import JobTemplate
 from app.models.worker_queue import WorkerQueueItem, WorkerQueueRequestedBy, WorkerQueueStatus
 from app.schemas.worker_queue import WorkerQueueRead
 from app.services.repo_service import ensure_pipeline_job_for_repo
@@ -218,6 +219,149 @@ def list_worker_queue_run_details(
         )
 
     return details
+
+
+def get_pipeline_status(items: list[WorkerQueueRead]) -> str:
+    statuses = [item.status for item in items]
+
+    if any(status == WorkerQueueStatus.FAILED for status in statuses):
+        return WorkerQueueStatus.FAILED
+    if any(status == WorkerQueueStatus.RUNNING for status in statuses):
+        return WorkerQueueStatus.RUNNING
+    if any(status == WorkerQueueStatus.QUEUED for status in statuses):
+        return WorkerQueueStatus.QUEUED
+    if statuses and all(status == WorkerQueueStatus.SUCCESS for status in statuses):
+        return WorkerQueueStatus.SUCCESS
+    if statuses and all(status == WorkerQueueStatus.CANCELED for status in statuses):
+        return WorkerQueueStatus.CANCELED
+    if statuses and all(status == WorkerQueueStatus.SKIPPED for status in statuses):
+        return WorkerQueueStatus.SKIPPED
+
+    return "mixed"
+
+
+def list_worker_pipeline_run_details(
+    session: Session,
+    status_filter: WorkerQueueStatus | None = None,
+    repo_id: int | None = None,
+    requested_by: WorkerQueueRequestedBy | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    query = select(WorkerQueueItem).order_by(
+        WorkerQueueItem.created_at.desc(),
+        WorkerQueueItem.id.desc(),
+    )
+
+    if repo_id is not None:
+        jobs = session.exec(select(Job).where(Job.repo_id == repo_id)).all()
+        job_ids = [job.id for job in jobs if job.id is not None]
+        if not job_ids:
+            return []
+        query = query.where(WorkerQueueItem.job_id.in_(job_ids))
+
+    items = list(session.exec(query.limit(limit * 10)).all())
+    if not items:
+        return []
+
+    step_ids = [item.job_step_id for item in items]
+    steps = session.exec(select(JobStep).where(JobStep.id.in_(step_ids))).all()
+    steps_by_id = {step.id: step for step in steps if step.id is not None}
+
+    job_ids = [item.job_id for item in items]
+    jobs = session.exec(select(Job).where(Job.id.in_(job_ids))).all()
+    jobs_by_id = {job.id: job for job in jobs if job.id is not None}
+
+    template_ids = [job.template_id for job in jobs]
+    templates_by_id = {}
+    if template_ids:
+        templates = session.exec(select(JobTemplate).where(JobTemplate.id.in_(template_ids))).all()
+        templates_by_id = {template.id: template for template in templates if template.id is not None}
+
+    repo_ids = [job.repo_id for job in jobs]
+    repos = session.exec(select(Repo).where(Repo.id.in_(repo_ids))).all()
+    repos_by_id = {repo.id: repo for repo in repos if repo.id is not None}
+
+    script_ids = [step.script_id for step in steps]
+    scripts_by_id = {}
+    if script_ids:
+        scripts = session.exec(select(Script).where(Script.id.in_(script_ids))).all()
+        scripts_by_id = {script.id: script for script in scripts if script.id is not None}
+
+    grouped: dict[str, dict] = {}
+    for item in items:
+        step = steps_by_id.get(item.job_step_id)
+        job = jobs_by_id.get(item.job_id)
+        repo = repos_by_id.get(job.repo_id) if job else None
+        job_template = templates_by_id.get(job.template_id) if job else None
+        script = scripts_by_id.get(step.script_id) if step else None
+
+        group = grouped.setdefault(
+            item.execution_id,
+            {
+                "execution_id": item.execution_id,
+                "repo_id": repo.id if repo else None,
+                "repo_name": repo.name if repo else None,
+                "provider": repo.provider if repo else None,
+                "release": repo.release if repo else None,
+                "job_id": job.id if job else None,
+                "template_id": job_template.id if job_template else None,
+                "template_name": job_template.name if job_template else None,
+                "requested_by": item.requested_by,
+                "source_created_at": item.created_at,
+                "schedule_id": item.schedule_id,
+                "created_at": item.created_at,
+                "started_at": item.started_at,
+                "finished_at": item.finished_at,
+                "steps": [],
+            },
+        )
+
+        group["created_at"] = min(group["created_at"], item.created_at)
+        if item.created_at < group["source_created_at"]:
+            group["source_created_at"] = item.created_at
+            group["requested_by"] = item.requested_by
+            group["schedule_id"] = item.schedule_id
+        if item.started_at is not None:
+            if group["started_at"] is None or item.started_at < group["started_at"]:
+                group["started_at"] = item.started_at
+        if item.finished_at is not None:
+            if group["finished_at"] is None or item.finished_at > group["finished_at"]:
+                group["finished_at"] = item.finished_at
+
+        group["steps"].append(
+            {
+                "queue_item": worker_queue_to_read(item),
+                "step_order": step.order if step else None,
+                "script_name": script.name if script else None,
+            }
+        )
+
+    pipeline_runs = []
+    for group in grouped.values():
+        group["steps"] = sorted(
+            group["steps"],
+            key=lambda step: (
+                step["step_order"] if step["step_order"] is not None else 999999,
+                step["queue_item"].id,
+            ),
+        )
+        group["status"] = get_pipeline_status(
+            [step["queue_item"] for step in group["steps"]]
+        )
+
+        if status_filter is not None and group["status"] != status_filter:
+            continue
+
+        if requested_by is not None and group["requested_by"] != requested_by:
+            continue
+
+        pipeline_runs.append(group)
+
+    return sorted(
+        pipeline_runs,
+        key=lambda run: run["created_at"],
+        reverse=True,
+    )[:limit]
 
 def enqueue_next_step_after_success(
     job: Job,

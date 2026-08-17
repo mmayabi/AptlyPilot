@@ -1,9 +1,10 @@
 {% if schedule_details %}
 <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-    <table class="min-w-[64rem] table-fixed divide-y divide-slate-100 text-sm">
+    <table class="min-w-[76rem] table-fixed divide-y divide-slate-100 text-sm">
         <colgroup>
             <col class="w-20">
             <col class="w-64">
+            <col class="w-56">
             <col class="w-28">
             <col class="w-28">
             <col class="w-44">
@@ -15,6 +16,7 @@
             <tr>
                 <th class="px-3 py-2">ID</th>
                 <th class="px-3 py-2">Repository</th>
+                <th class="px-3 py-2">Pipeline Template</th>
                 <th class="px-3 py-2">Type</th>
                 <th class="px-3 py-2">Status</th>
                 <th class="px-3 py-2">Next Run</th>
@@ -33,6 +35,10 @@
                     <div class="font-medium text-slate-900">{{ item.repo_name or "-" }}</div>
                     <div class="text-xs text-slate-500">{{ item.provider or "-" }} / {{ item.release or "-" }}</div>
                     <div class="text-xs text-slate-400">job #{{ item.job_id or "-" }}</div>
+                </td>
+                <td class="px-3 py-3">
+                    <div class="font-medium text-slate-900">{{ item.template_name or "-" }}</div>
+                    <div class="text-xs text-slate-400">template #{{ item.template_id or "-" }}</div>
                 </td>
                 <td class="px-3 py-3 text-slate-700">{{ schedule.schedule_type|title }}</td>
                 <td class="px-3 py-3">

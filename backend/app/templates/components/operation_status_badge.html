@@ -1,0 +1,17 @@
+{% if status == "running" %}
+<span class="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+    Running
+</span>
+{% elif status == "pending" %}
+<span class="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
+    Pending
+</span>
+{% elif status == "failed" %}
+<span class="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+    Failed
+</span>
+{% else %}
+<span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+    Idle
+</span>
+{% endif %}

@@ -7,7 +7,10 @@ from fastapi import HTTPException
 from sqlmodel import Session, select
 
 from app.models.aptly_state import AptlyMirrorState, AptlyPublishState, AptlySnapshotState
+from app.models.job import Job, JobStep
 from app.models.repo import Repo
+from app.models.script import Script
+from app.models.worker_queue import WorkerQueueItem, WorkerQueueStatus
 
 
 UPDATE_WARNING_DAYS = 7
@@ -205,6 +208,85 @@ def aggregate_operational_status(items: list[dict[str, Any]]) -> str:
     return "idle"
 
 
+def get_repo_operation_states(
+    session: Session,
+    repo_ids: list[int],
+) -> dict[int, dict[str, Any]]:
+    if not repo_ids:
+        return {}
+
+    jobs = session.exec(select(Job).where(Job.repo_id.in_(repo_ids))).all()
+    jobs_by_id = {job.id: job for job in jobs if job.id is not None}
+    job_ids = list(jobs_by_id.keys())
+    if not job_ids:
+        return {}
+
+    items = session.exec(
+        select(WorkerQueueItem)
+        .where(WorkerQueueItem.job_id.in_(job_ids))
+        .order_by(WorkerQueueItem.created_at.desc(), WorkerQueueItem.id.desc())
+    ).all()
+
+    step_ids = [item.job_step_id for item in items]
+    steps_by_id = {}
+    scripts_by_id = {}
+    if step_ids:
+        steps = session.exec(select(JobStep).where(JobStep.id.in_(step_ids))).all()
+        steps_by_id = {step.id: step for step in steps if step.id is not None}
+
+        script_ids = [step.script_id for step in steps]
+        if script_ids:
+            scripts = session.exec(select(Script).where(Script.id.in_(script_ids))).all()
+            scripts_by_id = {script.id: script for script in scripts if script.id is not None}
+
+    states: dict[int, dict[str, Any]] = {}
+
+    for wanted_status, operational_status in [
+        (WorkerQueueStatus.RUNNING, "running"),
+        (WorkerQueueStatus.QUEUED, "pending"),
+    ]:
+        for item in items:
+            if item.status != wanted_status:
+                continue
+
+            job = jobs_by_id.get(item.job_id)
+            if job is None or job.repo_id in states:
+                continue
+
+            step = steps_by_id.get(item.job_step_id)
+            script = scripts_by_id.get(step.script_id) if step else None
+            states[job.repo_id] = {
+                "operational_status": operational_status,
+                "current_operation_type": script.name if script else None,
+                "current_job_id": item.job_id,
+                "current_queue_item_id": item.id,
+                "current_execution_id": item.execution_id,
+            }
+
+    latest_by_repo_id: dict[int, WorkerQueueItem] = {}
+    for item in items:
+        job = jobs_by_id.get(item.job_id)
+        if job is None or job.repo_id in latest_by_repo_id:
+            continue
+        latest_by_repo_id[job.repo_id] = item
+
+    for repo_id, item in latest_by_repo_id.items():
+        if repo_id in states or item.status != WorkerQueueStatus.FAILED:
+            continue
+
+        step = steps_by_id.get(item.job_step_id)
+        script = scripts_by_id.get(step.script_id) if step else None
+        states[repo_id] = {
+            "operational_status": "failed",
+            "current_operation_type": script.name if script else None,
+            "current_job_id": item.job_id,
+            "current_queue_item_id": item.id,
+            "current_execution_id": item.execution_id,
+        }
+
+    return states
+
+
 def aggregate_health_status(items: list[dict[str, Any]]) -> str:
     statuses = [item["health_status"] for item in items]
 
@@ -271,6 +353,7 @@ def build_repo_dashboard_item(
     mirrors_by_name: dict[str, AptlyMirrorState],
     snapshots_by_source_mirror: dict[str, list[AptlySnapshotState]],
     all_publishes: list[AptlyPublishState],
+    operation_state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     effective_mirror_name = get_effective_mirror_name(repo)
 
@@ -473,6 +556,7 @@ def build_repo_dashboard_item(
     health_status = determine_health_status(errors=errors, warnings=warnings)
 
     publish = related_publishes[0] if related_publishes else None
+    operation_state = operation_state or {}
 
     return {
         "repo_id": repo.id,
@@ -517,9 +601,11 @@ def build_repo_dashboard_item(
 
         "pipeline_status": pipeline_status,
 
-        "operational_status": "idle",
-        "current_operation_type": None,
-        "current_job_id": None,
+        "operational_status": operation_state.get("operational_status", "idle"),
+        "current_operation_type": operation_state.get("current_operation_type"),
+        "current_job_id": operation_state.get("current_job_id"),
+        "current_queue_item_id": operation_state.get("current_queue_item_id"),
+        "current_execution_id": operation_state.get("current_execution_id"),
 
         "compliance_status": compliance_status,
         "health_status": health_status,
@@ -563,6 +649,10 @@ def load_dashboard_base_data(
 
 def build_all_repo_dashboard_items(session: Session) -> list[dict[str, Any]]:
     repos, mirrors_by_name, snapshots_by_source_mirror, publishes = load_dashboard_base_data(session)
+    operation_states = get_repo_operation_states(
+        session=session,
+        repo_ids=[repo.id for repo in repos if repo.id is not None],
+    )
 
     return [
         build_repo_dashboard_item(
@@ -570,6 +660,7 @@ def build_all_repo_dashboard_items(session: Session) -> list[dict[str, Any]]:
             mirrors_by_name=mirrors_by_name,
             snapshots_by_source_mirror=snapshots_by_source_mirror,
             all_publishes=publishes,
+            operation_state=operation_states.get(repo.id),
         )
         for repo in repos
     ]
@@ -618,6 +709,10 @@ def summarize_items(items: list[dict[str, Any]]) -> dict[str, Any]:
 
 def get_dashboard_summary(session: Session) -> dict[str, Any]:
     repos, mirrors_by_name, snapshots_by_source_mirror, publishes = load_dashboard_base_data(session)
+    operation_states = get_repo_operation_states(
+        session=session,
+        repo_ids=[repo.id for repo in repos if repo.id is not None],
+    )
 
     snapshots = [
         snapshot
@@ -631,6 +726,7 @@ def get_dashboard_summary(session: Session) -> dict[str, Any]:
             mirrors_by_name=mirrors_by_name,
             snapshots_by_source_mirror=snapshots_by_source_mirror,
             all_publishes=publishes,
+            operation_state=operation_states.get(repo.id),
         )
         for repo in repos
     ]
