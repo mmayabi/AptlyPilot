@@ -76,18 +76,4 @@ actions=actions
 
 </div>
 
-{% set columns=["Time","Event","Status"] %}
-{% set rows=[] %}
-{% with table_title="Recent Activities",columns=columns,rows=rows %}
-{% include "components/table.html" %}
-{% endwith %}
-
-<div class="mt-8">
-{% set columns=["Time","Error","Severity"] %}
-{% set rows=[] %}
-{% with table_title="Recent Errors",columns=columns,rows=rows %}
-{% include "components/table.html" %}
-{% endwith %}
-</div>
-
 {% endblock %}
