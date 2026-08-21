@@ -5,10 +5,10 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.clients.aptly_client import AptlyClient
-from app.config import get_settings
 from app.models.job import Job, JobStep
 from app.models.script import Script
 from app.models.worker_queue import WorkerQueueItem, WorkerQueueStatus
+from app.services.app_setting_service import make_aptly_client_from_settings
 from app.services.repository_operation_service import (
     SUPPORTED_REPOSITORY_OPERATION_SCRIPTS,
     run_repository_operation_step,
@@ -106,14 +106,7 @@ def mark_step_failed(item: WorkerQueueItem, log: str, error_message: str, sessio
 
 
 def make_aptly_client() -> AptlyClient:
-    settings = get_settings()
-
-    return AptlyClient(
-        base_url=settings.APTLY_API_URL,
-        username=settings.APTLY_API_USERNAME,
-        password=settings.APTLY_API_PASSWORD,
-        token=settings.APTLY_API_TOKEN,
-    )
+    return make_aptly_client_from_settings()
 
 
 def json_log(payload: dict[str, Any]) -> str:

@@ -5,7 +5,6 @@ from sqlmodel import Session, select
 
 from app.api.deps import get_db_session
 from app.clients.aptly_client import AptlyAPIError, AptlyClient
-from app.config import get_settings
 from app.core.permissions import require_operator, require_viewer
 from app.models.aptly_state import AptlyMirrorState, AptlySnapshotState, AptlyPublishState
 from app.models.user import User
@@ -33,17 +32,12 @@ from app.services.aptly_inventory_service import (
     sync_aptly_publishes,
     sync_aptly_snapshots,
 )
+from app.services.app_setting_service import make_aptly_client_from_settings
 
 router = APIRouter(prefix="/aptly", tags=["aptly"])
-settings = get_settings()
 
 def get_aptly_client() -> AptlyClient:
-    return AptlyClient(
-        base_url=settings.APTLY_API_URL,
-        username=settings.APTLY_API_USERNAME,
-        password=settings.APTLY_API_PASSWORD,
-        token=settings.APTLY_API_TOKEN,
-    )
+    return make_aptly_client_from_settings()
 
 # -----------------------------
 # Mirrors

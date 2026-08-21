@@ -3,11 +3,11 @@ from sqlmodel import Session
 
 from app.api.deps import get_db_session
 from app.clients.aptly_client import AptlyClient
-from app.config import get_settings
 from app.core.tokens import decode_access_token
 from app.models.user import User
 from app.models.user import UserRole
 from app.repositories.user_repo import get_user_by_id
+from app.services.app_setting_service import make_aptly_client_from_settings
 
 
 def _get_web_user_with_roles(
@@ -92,11 +92,4 @@ def get_web_admin(
 
 
 def get_ui_aptly_client() -> AptlyClient:
-    settings = get_settings()
-
-    return AptlyClient(
-        base_url=settings.APTLY_API_URL,
-        username=settings.APTLY_API_USERNAME,
-        password=settings.APTLY_API_PASSWORD,
-        token=settings.APTLY_API_TOKEN,
-    )
+    return make_aptly_client_from_settings()

@@ -95,6 +95,7 @@ class RetentionConfig(BaseModel):
 class ScheduleType(StrEnum):
     DAILY = "daily"
     WEEKLY = "weekly"
+    MONTHLY = "monthly"
 
 
 class ScheduleConfig(BaseModel):

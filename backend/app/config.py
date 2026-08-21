@@ -24,7 +24,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_ALGORITHM: str = "HS256"
 
-    REPOS_CONFIG_PATH: str = "/app/examples/repos.yaml"
+    REPOS_CONFIG_SOURCE: str = "local"
+    REPOS_CONFIG_PATH: str = "/app/config/repos.yaml"
+    GITLAB_CONFIG_BASE_URL: str = "https://gitlab.com"
+    GITLAB_CONFIG_PROJECT_ID: str | None = None
+    GITLAB_CONFIG_REF: str = "main"
+    GITLAB_CONFIG_FILE_PATH: str | None = None
+    GITLAB_CONFIG_TOKEN: str | None = None
+    GITLAB_CONFIG_TIMEOUT_SECONDS: int = 20
 
     # Aptly api connection settings
     APTLY_API_URL: str = "http://127.0.0.1:8080"

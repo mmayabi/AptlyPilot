@@ -21,5 +21,12 @@ build/
 postgres_data/
 redis_data/
 
+config/*.yaml
+config/*.yml
+!config/.gitkeep
+backend/config/*.yaml
+backend/config/*.yml
+!backend/config/.gitkeep
+
 .coverage
 htmlcov/

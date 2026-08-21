@@ -7,6 +7,7 @@ from app.models.template import JobTemplate, JobStepTemplate
 from app.models.job import Job, JobStep
 from app.models.worker_queue import WorkerQueueItem
 from app.models.job_schedule import JobSchedule
+from app.models.app_setting import AppSetting
 
 __all__ = [
     "SQLModel",
@@ -19,4 +20,5 @@ __all__ = [
     "JobStep",
     "WorkerQueueItem",
     "JobSchedule",
+    "AppSetting",
 ]

@@ -8,7 +8,7 @@ Settings
 
 {% with
 title="Settings",
-subtitle="Read-only runtime and repository configuration",
+subtitle="Runtime settings and repository config management",
 actions=[]
 %}
 {% include "components/page_header.html" %}
@@ -30,17 +30,209 @@ actions=[]
     </section>
 
     <section class="rounded-lg border border-slate-200 bg-white">
+        <div class="border-b border-slate-100 px-5 py-4">
+            <h2 class="text-base font-semibold text-slate-900">Aptly Connection</h2>
+        </div>
+        <form
+            id="aptly-connection-form"
+            class="grid gap-4 p-5 lg:grid-cols-2"
+            hx-post="/settings/aptly-connection/save"
+            hx-target="#aptly-connection-result"
+            hx-swap="innerHTML">
+            <label class="block lg:col-span-2">
+                <span class="text-xs font-semibold uppercase text-slate-500">API URL</span>
+                <input
+                    type="text"
+                    name="aptly_api_url"
+                    value="{{ aptly_connection.url }}"
+                    class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+            </label>
+
+            <label class="block">
+                <span class="text-xs font-semibold uppercase text-slate-500">Username</span>
+                <input
+                    type="text"
+                    name="aptly_api_username"
+                    value="{{ aptly_connection.username }}"
+                    class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+            </label>
+
+            <label class="block">
+                <span class="text-xs font-semibold uppercase text-slate-500">Password</span>
+                <input
+                    type="password"
+                    name="aptly_api_password"
+                    placeholder="{% if aptly_connection.has_password %}Password is already set; leave blank to keep it{% else %}Optional password{% endif %}"
+                    class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+            </label>
+
+            <label class="block lg:col-span-2">
+                <span class="text-xs font-semibold uppercase text-slate-500">Bearer Token</span>
+                <input
+                    type="password"
+                    name="aptly_api_token"
+                    placeholder="{% if aptly_connection.has_token %}Token is already set; leave blank to keep it{% else %}Optional token{% endif %}"
+                    class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+            </label>
+
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                    type="checkbox"
+                    name="clear_aptly_password"
+                    value="true"
+                    class="rounded border-slate-300">
+                Clear stored password
+            </label>
+
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                    type="checkbox"
+                    name="clear_aptly_token"
+                    value="true"
+                    class="rounded border-slate-300">
+                Clear stored token
+            </label>
+
+            <div class="flex flex-wrap items-center justify-end gap-3 lg:col-span-2">
+                <div id="aptly-connection-result" class="text-sm"></div>
+                <button
+                    type="button"
+                    class="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    hx-post="/settings/aptly-connection/test"
+                    hx-target="#aptly-connection-result"
+                    hx-include="#aptly-connection-form"
+                    hx-swap="innerHTML">
+                    Test Connection
+                </button>
+                <button
+                    type="submit"
+                    class="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                    Save Connection
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <section class="rounded-lg border border-slate-200 bg-white">
+        <div class="border-b border-slate-100 px-5 py-4">
+            <h2 class="text-base font-semibold text-slate-900">Config Source</h2>
+        </div>
+        <form
+            class="grid gap-4 p-5 lg:grid-cols-2"
+            hx-post="/settings/config-source/save"
+            hx-target="#config-source-save-result"
+            hx-swap="innerHTML">
+            <label class="block">
+                <span class="text-xs font-semibold uppercase text-slate-500">Source</span>
+                <select
+                    id="config-source-select"
+                    name="source"
+                    class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+                    <option value="local" {% if config_source_values.source == "local" %}selected{% endif %}>Local File</option>
+                    <option value="gitlab" {% if config_source_values.source == "gitlab" %}selected{% endif %}>GitLab</option>
+                </select>
+            </label>
+
+            <label class="block" data-config-source-section="local">
+                <span class="text-xs font-semibold uppercase text-slate-500">Local Path</span>
+                <div class="mt-1 w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-700">
+                    {{ config_source_values.local_path }}
+                </div>
+            </label>
+
+            <label class="block" data-config-source-section="gitlab">
+                <span class="text-xs font-semibold uppercase text-slate-500">GitLab Base URL</span>
+                <input
+                    type="text"
+                    name="gitlab_base_url"
+                    value="{{ config_source_values.gitlab_base_url }}"
+                    class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+            </label>
+
+            <label class="block" data-config-source-section="gitlab">
+                <span class="text-xs font-semibold uppercase text-slate-500">GitLab Project ID or Path</span>
+                <input
+                    type="text"
+                    name="gitlab_project_id"
+                    value="{{ config_source_values.gitlab_project_id }}"
+                    placeholder="group/project or numeric id"
+                    class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+            </label>
+
+            <label class="block" data-config-source-section="gitlab">
+                <span class="text-xs font-semibold uppercase text-slate-500">GitLab Ref</span>
+                <input
+                    type="text"
+                    name="gitlab_ref"
+                    value="{{ config_source_values.gitlab_ref }}"
+                    class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+            </label>
+
+            <label class="block" data-config-source-section="gitlab">
+                <span class="text-xs font-semibold uppercase text-slate-500">GitLab File Path</span>
+                <input
+                    type="text"
+                    name="gitlab_file_path"
+                    value="{{ config_source_values.gitlab_file_path }}"
+                    placeholder="config/repos.yaml"
+                    class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+            </label>
+
+            <label class="block" data-config-source-section="gitlab">
+                <span class="text-xs font-semibold uppercase text-slate-500">GitLab Token</span>
+                <input
+                    type="password"
+                    name="gitlab_token"
+                    placeholder="{% if config_source_values.has_gitlab_token %}Token is already set; leave blank to keep it{% else %}Optional private token{% endif %}"
+                    class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+            </label>
+
+            <label class="block" data-config-source-section="gitlab">
+                <span class="text-xs font-semibold uppercase text-slate-500">Timeout Seconds</span>
+                <input
+                    type="number"
+                    min="1"
+                    name="gitlab_timeout_seconds"
+                    value="{{ config_source_values.gitlab_timeout_seconds }}"
+                    class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+            </label>
+
+            <label class="flex items-center gap-2 text-sm text-slate-700" data-config-source-section="gitlab">
+                <input
+                    type="checkbox"
+                    name="clear_gitlab_token"
+                    value="true"
+                    class="rounded border-slate-300">
+                Clear stored GitLab token
+            </label>
+
+            <div class="flex items-center justify-end gap-3">
+                <div id="config-source-save-result" class="text-sm"></div>
+                <button
+                    type="submit"
+                    class="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                    Save Source Settings
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <section class="rounded-lg border border-slate-200 bg-white">
         <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
             <div>
                 <h2 class="text-base font-semibold text-slate-900">Repository Config</h2>
-                <p class="mt-1 break-all font-mono text-sm text-slate-500">{{ config_path }}</p>
+                <p class="mt-1 break-all font-mono text-sm text-slate-500">{{ config_location }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                {% if config_path_exists %}
+                <span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                    Source: {{ config_source|title }}
+                </span>
+
+                {% if config_is_local and config_path_exists %}
                 <span class="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
                     File Found
                 </span>
-                {% else %}
+                {% elif config_is_local %}
                 <span class="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
                     File Missing
                 </span>
@@ -92,22 +284,118 @@ actions=[]
                 {% endif %}
             </div>
 
-            <div>
-                <div class="rounded-lg border border-slate-200 bg-slate-950">
-                    <div class="border-b border-slate-800 px-4 py-3 text-xs font-semibold uppercase text-slate-400">
-                        Config Content
+            <div class="space-y-4">
+                <form
+                    id="config-upload-form"
+                    class="rounded-lg border border-slate-200 p-4"
+                    data-config-source-section="local"
+                    hx-post="/settings/config/upload-test"
+                    hx-target="#config-upload-result"
+                    hx-swap="innerHTML"
+                    hx-encoding="multipart/form-data">
+                    <div class="flex flex-wrap items-end gap-3">
+                        <label class="min-w-0 flex-1">
+                            <span class="text-xs font-semibold uppercase text-slate-500">Upload New Config For Test</span>
+                            <input
+                                type="file"
+                                name="config_file"
+                                accept=".yaml,.yml,text/yaml,text/plain"
+                                class="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
+                        </label>
+                        <button
+                            type="submit"
+                            class="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                            Validate Upload
+                        </button>
                     </div>
+                    <div id="config-upload-result" class="mt-3"></div>
+                </form>
+
+                <form id="config-editor-form" class="rounded-lg border border-slate-200 bg-slate-950">
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
+                        <div class="text-xs font-semibold uppercase text-slate-400">
+                            Current Config Editor
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button
+                                type="button"
+                                class="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-900"
+                                hx-post="/settings/config/validate"
+                                hx-target="#config-editor-result"
+                                hx-include="#config-editor-form"
+                                hx-swap="innerHTML">
+                                Validate
+                            </button>
+                            <button
+                                type="button"
+                                class="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-900"
+                                hx-post="/settings/config/sync-current"
+                                hx-target="#config-editor-result"
+                                hx-swap="innerHTML">
+                                Sync Current Source
+                            </button>
+                            {% if config_is_local %}
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                                    hx-post="/settings/config/save"
+                                    hx-target="#config-editor-result"
+                                    hx-include="#config-editor-form"
+                                    hx-swap="innerHTML">
+                                    Save
+                                </button>
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                                    hx-post="/settings/config/save-and-sync"
+                                    hx-target="#config-editor-result"
+                                    hx-include="#config-editor-form"
+                                    hx-swap="innerHTML">
+                                    Save & Sync
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if not config_is_local %}
+                    <div class="border-b border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-300">
+                        This config is loaded from {{ config_source|title }}. Editing is disabled here; update the source repository instead.
+                    </div>
+                    {% endif %}
                     {% if config_read_error %}
                     <div class="p-4 text-sm text-red-300">{{ config_read_error }}</div>
-                    {% elif config_content %}
-                    <pre class="max-h-[42rem] overflow-auto p-4 text-xs leading-5 text-slate-100">{{ config_content }}</pre>
                     {% else %}
-                    <div class="p-4 text-sm text-slate-400">No config content found.</div>
+                    <textarea
+                        name="config_content"
+                        spellcheck="false"
+                        {% if not config_is_local %}readonly{% endif %}
+                        class="h-[42rem] w-full resize-y border-0 bg-slate-950 p-4 font-mono text-xs leading-5 text-slate-100 outline-none focus:ring-0 {% if not config_is_local %}opacity-80{% endif %}">{{ config_content }}</textarea>
                     {% endif %}
-                </div>
+                </form>
+                <div id="config-editor-result"></div>
             </div>
         </div>
     </section>
 </div>
+
+<script>
+    (() => {
+        const sourceSelect = document.getElementById("config-source-select");
+        const sections = Array.from(document.querySelectorAll("[data-config-source-section]"));
+
+        function updateConfigSourceSections() {
+            const selectedSource = sourceSelect ? sourceSelect.value : "local";
+
+            for (const section of sections) {
+                const sectionSource = section.dataset.configSourceSection;
+                section.classList.toggle("hidden", sectionSource !== selectedSource);
+            }
+        }
+
+        if (sourceSelect) {
+            sourceSelect.addEventListener("change", updateConfigSourceSections);
+            updateConfigSourceSections();
+        }
+    })();
+</script>
 
 {% endblock %}

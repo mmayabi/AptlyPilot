@@ -13,7 +13,7 @@ services:
     volumes:
       - ./backend/app:/app/app
       - ./backend/tests:/app/tests
-      - ./examples:/app/examples
+      - ./backend/config:/app/config
     depends_on:
       postgres:
         condition: service_healthy

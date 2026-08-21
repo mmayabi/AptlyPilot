@@ -375,6 +375,9 @@ def ensure_pipeline_job_for_repo(
 
 
 def get_schedule_type(schedule: ScheduleConfig) -> JobScheduleType:
+    if schedule.type == ScheduleType.MONTHLY:
+        return JobScheduleType.MONTHLY
+
     if schedule.type == ScheduleType.WEEKLY:
         return JobScheduleType.WEEKLY
 
@@ -410,6 +413,24 @@ def compute_next_config_run_at(
 
         if candidate <= now:
             candidate += timedelta(weeks=1)
+
+        return candidate
+
+    if schedule_type == JobScheduleType.MONTHLY:
+        day_of_month = ((offset // 1440) % 28) + 1
+        candidate = now.replace(
+            day=day_of_month,
+            hour=hour,
+            minute=minute,
+            second=0,
+            microsecond=0,
+        )
+
+        if candidate <= now:
+            if candidate.month == 12:
+                candidate = candidate.replace(year=candidate.year + 1, month=1)
+            else:
+                candidate = candidate.replace(month=candidate.month + 1)
 
         return candidate
 
