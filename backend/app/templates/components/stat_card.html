@@ -1,21 +1,43 @@
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-full">
+{% set tone = tone|default("neutral") %}
+{% set card_class = {
+    "critical": "border-red-200 bg-red-50/60",
+    "warning": "border-yellow-200 bg-yellow-50/60",
+    "success": "border-green-200 bg-green-50/50",
+    "info": "border-blue-200 bg-blue-50/50",
+    "neutral": "border-slate-200 bg-white"
+}.get(tone, "border-slate-200 bg-white") %}
+{% set icon_class = {
+    "critical": "bg-red-100 text-red-700",
+    "warning": "bg-yellow-100 text-yellow-700",
+    "success": "bg-green-100 text-green-700",
+    "info": "bg-blue-100 text-blue-700",
+    "neutral": "bg-slate-100 text-slate-600"
+}.get(tone, "bg-slate-100 text-slate-600") %}
+
+<div class="{{ card_class }} rounded-xl shadow-sm border p-6 h-full">
 
     <div class="flex justify-between items-start">
 
         <div>
 
-            <p class="text-sm font-medium text-slate-500">
+            <p class="text-sm font-medium {% if tone == 'critical' %}text-red-700{% elif tone == 'warning' %}text-yellow-700{% elif tone == 'success' %}text-green-700{% else %}text-slate-500{% endif %}">
                 {{ title }}
             </p>
 
-            <h2 class="text-4xl font-bold mt-2 text-slate-900">
+            <h2 class="{% if compact %}text-3xl{% else %}text-4xl{% endif %} font-bold mt-2 text-slate-900">
                 {{ value }}
             </h2>
+
+            {% if summary %}
+            <p class="mt-2 text-sm text-slate-600">
+                {{ summary }}
+            </p>
+            {% endif %}
 
         </div>
 
         {% if icon %}
-        <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-2xl">
+        <div class="{% if compact %}w-10 h-10 text-sm{% else %}w-12 h-12 text-base{% endif %} rounded-xl {{ icon_class }} flex items-center justify-center font-bold">
             {{ icon }}
         </div>
         {% endif %}
@@ -24,7 +46,7 @@
 
     {% if items %}
 
-    <div class="mt-6 grid gap-2">
+    <div class="{% if compact %}mt-4{% else %}mt-6{% endif %} grid gap-2">
 
         {% for item in items %}
 
@@ -44,6 +66,14 @@
 
     </div>
 
+    {% endif %}
+
+    {% if meter_value is defined %}
+    <div class="mt-5">
+        <div class="h-2 overflow-hidden rounded-full bg-slate-200">
+            <div class="h-full rounded-full {{ meter_class|default('bg-blue-600') }}" style="width: {{ meter_value }}%"></div>
+        </div>
+    </div>
     {% endif %}
 
 </div>

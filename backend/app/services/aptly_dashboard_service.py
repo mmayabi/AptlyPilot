@@ -689,6 +689,7 @@ def summarize_items(items: list[dict[str, Any]]) -> dict[str, Any]:
 
         "running_count": count_items(items, "operational_status", "running"),
         "pending_count": count_items(items, "operational_status", "pending"),
+        "failed_count": count_items(items, "operational_status", "failed"),
 
         "retention_ok_count": count_items(items, "retention_status", "ok"),
         "retention_exceeded_count": count_items(items, "retention_status", "exceeded"),
@@ -776,6 +777,7 @@ def get_dashboard_summary(session: Session) -> dict[str, Any]:
 
         "running_count": count_items(items, "operational_status", "running"),
         "pending_count": count_items(items, "operational_status", "pending"),
+        "failed_count": count_items(items, "operational_status", "failed"),
 
         "retention_ok_count": count_items(items, "retention_status", "ok"),
         "retention_exceeded_count": count_items(items, "retention_status", "exceeded"),

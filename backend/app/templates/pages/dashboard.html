@@ -5,34 +5,34 @@
 
 {% block content %}
 
-{% set actions = [
-    {"label":"Refresh Aptly State","icon":"Refresh","hx_post":"/dashboard/sync-aptly","hx_target":"#sync-card","hx_swap":"outerHTML"}
-] %}
+{% set total_repos = overview.repos_count or 0 %}
+{% set health_ok_pct = (overview.healthy_count * 100 / total_repos)|round(0, "floor")|int if total_repos else 0 %}
+{% set compliance_ok_pct = (overview.compliant_count * 100 / total_repos)|round(0, "floor")|int if total_repos else 0 %}
+{% set retention_ok_total = overview.retention_ok_count + overview.retention_exceeded_count %}
+{% set retention_ok_pct = (overview.retention_ok_count * 100 / retention_ok_total)|round(0, "floor")|int if retention_ok_total else 0 %}
 
-{% with
-title="Dashboard",
-subtitle="Enterprise Repository Management Platform",
-actions=actions
-%}
+{% with title="Dashboard", subtitle="Enterprise Repository Management Platform", actions=actions %}
 {% include "components/page_header.html" %}
 {% endwith %}
 
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-
-{% with title="Providers", value=overview.providers_count, icon="🌐" %}
-{% include "components/stat_card.html" %}
-{% endwith %}
-
-{% with title="Releases", value=overview.releases_count, icon="💿" %}
-{% include "components/stat_card.html" %}
-{% endwith %}
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
 
 {% set repo_items=[
 {"label":"Healthy","value":overview.healthy_count,"class":"text-green-600"},
 {"label":"Warning","value":overview.warning_count,"class":"text-yellow-600"},
 {"label":"Critical","value":overview.critical_count,"class":"text-red-600"}
 ] %}
-{% with title="Repositories",value=overview.repos_count,icon="📦",items=repo_items %}
+{% set repo_tone = "critical" if overview.critical_count else ("warning" if overview.warning_count else "success") %}
+{% with
+title="Repository Health",
+value=overview.repos_count,
+icon="R",
+items=repo_items,
+tone=repo_tone,
+summary=overview.critical_count ~ " critical, " ~ overview.warning_count ~ " warning",
+meter_value=health_ok_pct,
+meter_class="bg-green-600"
+%}
 {% include "components/stat_card.html" %}
 {% endwith %}
 
@@ -40,15 +40,17 @@ actions=actions
 {"label":"Compliant","value":overview.compliant_count,"class":"text-green-600"},
 {"label":"Non-Compliant","value":overview.non_compliant_count,"class":"text-red-600"}
 ] %}
-{% with title="Compliance",value=overview.compliant_count+overview.non_compliant_count,icon="✔️",items=compliance_items %}
-{% include "components/stat_card.html" %}
-{% endwith %}
-
-{% set task_items=[
-{"label":"Running","value":overview.running_count,"class":"text-blue-600"},
-{"label":"Pending","value":overview.pending_count,"class":"text-orange-600"}
-] %}
-{% with title="Tasks",value=overview.running_count+overview.pending_count,icon="⚙️",items=task_items %}
+{% set compliance_tone = "critical" if overview.non_compliant_count else "success" %}
+{% with
+title="Compliance",
+value=overview.compliant_count+overview.non_compliant_count,
+icon="C",
+items=compliance_items,
+tone=compliance_tone,
+summary=compliance_ok_pct ~ "% compliant",
+meter_value=compliance_ok_pct,
+meter_class="bg-green-600"
+%}
 {% include "components/stat_card.html" %}
 {% endwith %}
 
@@ -56,23 +58,45 @@ actions=actions
 {"label":"OK","value":overview.retention_ok_count,"class":"text-green-600"},
 {"label":"Exceeded","value":overview.retention_exceeded_count,"class":"text-red-600"}
 ] %}
-{% with title="Retention",value=overview.retention_ok_count+overview.retention_exceeded_count,icon="🕒",items=retention_items %}
+{% set retention_tone = "critical" if overview.retention_exceeded_count else "success" %}
+{% with
+title="Retention",
+value=retention_ok_total,
+icon="T",
+items=retention_items,
+tone=retention_tone,
+summary=overview.retention_exceeded_count ~ " repositories exceeded retention",
+meter_value=retention_ok_pct,
+meter_class="bg-green-600"
+%}
+{% include "components/stat_card.html" %}
+{% endwith %}
+
+{% set task_items=[
+{"label":"Running","value":overview.running_count,"class":"text-blue-600"},
+{"label":"Pending","value":overview.pending_count,"class":"text-orange-600"},
+{"label":"Failed","value":overview.failed_count,"class":"text-red-600"}
+] %}
+{% set task_tone = "critical" if overview.failed_count else ("info" if overview.running_count or overview.pending_count else "neutral") %}
+{% with title="Tasks", value=overview.running_count+overview.pending_count+overview.failed_count, icon="Q", items=task_items, tone=task_tone, summary="Active and failed queue workload" %}
 {% include "components/stat_card.html" %}
 {% endwith %}
 
 </div>
 
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
+<div class="grid grid-cols-1 xl:grid-cols-4 gap-6 mt-8">
 
-<div class="xl:col-span-2">
+<div class="xl:col-span-2 h-full">
 {% with overview=overview %}
 {% include "components/aptly_activity_card.html" %}
 {% endwith %}
 </div>
 
+<div class="xl:col-span-2 h-full">
 {% with overview=overview %}
 {% include "components/sync_actions_card.html" %}
 {% endwith %}
+</div>
 
 </div>
 
