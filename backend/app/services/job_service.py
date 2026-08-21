@@ -17,12 +17,6 @@ def check_template_exists(template_id: int, session: Session) -> JobTemplate:
         raise HTTPException(status_code=404, detail=f"Template id {template_id} not found")
     return template
 
-def get_step_or_404(step_id: int, session: Session) -> JobStep:
-    step = session.get(JobStep, step_id)
-    if not step:
-        raise HTTPException(status_code=404, detail=f"JobStep id {step_id} not found")
-    return step
-
 # -----------------------------
 # Mapper
 # -----------------------------

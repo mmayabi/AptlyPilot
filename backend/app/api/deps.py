@@ -22,54 +22,22 @@ def get_db_session() -> Generator[Session, None, None]:
     yield from get_session()
 
 
-#def get_access_token(
-#    request: Request,
-#    bearer_token: str | None = Depends(oauth2_scheme),
-#) -> str:
-#
-#    if bearer_token:
-#        return bearer_token
-#
-#    cookie_token = request.cookies.get("access_token")
-#
-#    if cookie_token:
-#        return cookie_token
-#
-#    raise HTTPException(
-#        status_code=status.HTTP_401_UNAUTHORIZED,
-#        detail="Not authenticated",
-#        headers={"WWW-Authenticate": "Bearer"},
-#    )
 def get_access_token(
     request: Request,
     bearer_token: str | None = Depends(oauth2_scheme),
 ) -> str:
-
-    print("=" * 80)
-    print("Headers:")
-    print(request.headers)
-
-    print("=" * 80)
-    print("Cookies:")
-    print(request.cookies)
-
-    print("=" * 80)
-
     if bearer_token:
-        print("Bearer Token")
         return bearer_token
 
     cookie_token = request.cookies.get("access_token")
 
     if cookie_token:
-        print("Cookie Token Found")
         return cookie_token
 
-    print("NO TOKEN")
-
     raise HTTPException(
-        status_code=401,
+        status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
     )
 
 def get_current_user(

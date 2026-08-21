@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy.exc import SQLAlchemyError
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app.config import get_settings
 from app.clients.aptly_client import AptlyClient
@@ -19,18 +19,6 @@ def get_app_setting_value(key: str, default: str | None = None) -> str | None:
         pass
 
     return str(getattr(get_settings(), key, default) or "")
-
-
-def list_app_settings(keys: list[str] | None = None) -> dict[str, AppSetting]:
-    with Session(engine) as session:
-        query = select(AppSetting)
-        if keys:
-            query = query.where(AppSetting.key.in_(keys))
-
-        return {
-            setting.key: setting
-            for setting in session.exec(query).all()
-        }
 
 
 def upsert_app_setting(
