@@ -9,6 +9,7 @@ from app.models.job import Job, JobDefinitionStatus, JobStep
 from app.models.job_schedule import JobSchedule, JobScheduleStatus, JobScheduleType
 from app.models.repo import Repo
 from app.models.template import JobStepTemplate, JobTemplate
+from app.models.worker_queue import WorkerQueueItem, WorkerQueueStatus
 from app.repositories.repo_repo import (
     create_repo,
     get_repo_by_name,
@@ -503,12 +504,72 @@ def ensure_config_schedule_for_job(
     return existing_schedule
 
 
+def disable_repo_missing_from_config(session: Session, repo: Repo) -> bool:
+    changed = False
+    now = datetime.utcnow()
+
+    if (
+        repo.mirror_enabled
+        or repo.snapshot_enabled
+        or repo.publish_enabled
+        or repo.test_enabled
+    ):
+        repo.mirror_enabled = False
+        repo.snapshot_enabled = False
+        repo.publish_enabled = False
+        repo.test_enabled = False
+        repo.updated_at = now
+        session.add(repo)
+        changed = True
+
+    jobs = session.exec(
+        select(Job).where(Job.repo_id == repo.id)
+    ).all()
+    job_ids = [job.id for job in jobs if job.id is not None]
+
+    for job in jobs:
+        if job.status != JobDefinitionStatus.DISABLED:
+            job.status = JobDefinitionStatus.DISABLED
+            job.updated_at = now
+            session.add(job)
+            changed = True
+
+    if job_ids:
+        schedules = session.exec(
+            select(JobSchedule).where(JobSchedule.job_id.in_(job_ids))
+        ).all()
+        for schedule in schedules:
+            if schedule.status != JobScheduleStatus.DISABLED:
+                schedule.status = JobScheduleStatus.DISABLED
+                schedule.updated_at = now
+                session.add(schedule)
+                changed = True
+
+        queued_items = session.exec(
+            select(WorkerQueueItem).where(
+                WorkerQueueItem.job_id.in_(job_ids),
+                WorkerQueueItem.status == WorkerQueueStatus.QUEUED,
+            )
+        ).all()
+        for item in queued_items:
+            item.status = WorkerQueueStatus.CANCELED
+            item.finished_at = now
+            item.error_message = "Canceled because repository was removed from config"
+            item.updated_at = now
+            session.add(item)
+            changed = True
+
+    return changed
+
+
 def sync_repos_from_config(session: Session) -> RepoSyncResponse:
     config_file = load_and_validate_repos_config()
     flattened_repos = flatten_repos_config(config_file)
+    configured_repo_names = {resolved.name for resolved in flattened_repos}
 
     created = 0
     updated = 0
+    disabled = 0
     results: list[RepoSyncItemResult] = []
 
     for resolved in flattened_repos:
@@ -563,9 +624,26 @@ def sync_repos_from_config(session: Session) -> RepoSyncResponse:
             )
         )
 
+    for repo in list_repos(session):
+        if repo.name in configured_repo_names:
+            continue
+
+        if disable_repo_missing_from_config(session, repo):
+            session.commit()
+            disabled += 1
+            results.append(
+                RepoSyncItemResult(
+                    name=repo.name,
+                    provider=repo.provider,
+                    release=repo.release,
+                    action="disabled",
+                )
+            )
+
     return RepoSyncResponse(
         created=created,
         updated=updated,
+        disabled=disabled,
         total=len(flattened_repos),
         repos=results,
     )

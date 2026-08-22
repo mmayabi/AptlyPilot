@@ -46,6 +46,7 @@
         <div class="mt-1">
             Created {{ sync_result.created }},
             updated {{ sync_result.updated }},
+            disabled {{ sync_result.disabled|default(0) }},
             total {{ sync_result.total }}.
         </div>
     </div>

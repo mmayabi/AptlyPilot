@@ -4,7 +4,7 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
-from app.models.job import Job, JobStep
+from app.models.job import Job, JobDefinitionStatus, JobStep
 from app.models.repo import Repo
 from app.models.script import Script
 from app.models.template import JobTemplate
@@ -71,6 +71,12 @@ def enqueue_job(
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job not found: {job_id}")
 
+    if job.status == JobDefinitionStatus.DISABLED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job is disabled",
+        )
+
     ensure_no_active_queue_for_job(job_id, session)
 
     first_step = get_first_step(job_id, session)
@@ -106,6 +112,19 @@ def enqueue_repository_pipeline(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Repository not found: {repo_id}",
+        )
+
+    if not any(
+        [
+            repo.mirror_enabled,
+            repo.snapshot_enabled,
+            repo.publish_enabled,
+            repo.test_enabled,
+        ]
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Repository is disabled because it is not present in the current config",
         )
 
     job = ensure_pipeline_job_for_repo(session, repo)

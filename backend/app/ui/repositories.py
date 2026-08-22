@@ -116,6 +116,7 @@ def repositories_sync_from_config(
                 "status": "success",
                 "created": result.created,
                 "updated": result.updated,
+                "disabled": result.disabled,
                 "total": result.total,
             },
         },

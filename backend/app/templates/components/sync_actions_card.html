@@ -68,7 +68,7 @@
 
         {% if sync_result.total is defined %}
         <p class="mt-1 text-sm">
-            Total {{ sync_result.total }}, created {{ sync_result.created|default(0) }}, updated {{ sync_result.updated|default(0) }}.
+            Total {{ sync_result.total }}, created {{ sync_result.created|default(0) }}, updated {{ sync_result.updated|default(0) }}, disabled {{ sync_result.disabled|default(0) }}.
         </p>
         {% elif sync_result.errors %}
         <ul class="mt-2 space-y-1 text-sm">

@@ -217,5 +217,6 @@ class RepoSyncItemResult(BaseModel):
 class RepoSyncResponse(BaseModel):
     created: int
     updated: int
+    disabled: int = 0
     total: int
     repos: list[RepoSyncItemResult]
