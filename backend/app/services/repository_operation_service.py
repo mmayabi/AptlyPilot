@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from collections.abc import Callable
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -17,6 +18,7 @@ SCRIPT_SNAPSHOT_CREATE = "aptly.snapshot.create"
 SCRIPT_PUBLISH_SWITCH = "aptly.publish.switch"
 SCRIPT_RETENTION_CLEANUP = "aptly.retention.cleanup"
 SCRIPT_INVENTORY_SYNC = "aptly.inventory.sync"
+TaskProgressCallback = Callable[[dict[str, Any]], None]
 
 
 SUPPORTED_REPOSITORY_OPERATION_SCRIPTS = {
@@ -72,7 +74,11 @@ def get_latest_snapshot_name_for_repo(
         session.exec(
             select(AptlySnapshotState)
             .where(AptlySnapshotState.source_mirror_name == mirror_name)
-            .order_by(AptlySnapshotState.created_at_aptly.desc())
+            .order_by(
+                AptlySnapshotState.created_at_aptly.desc().nullslast(),
+                AptlySnapshotState.item_updated_at.desc(),
+                AptlySnapshotState.id.desc(),
+            )
         ).all()
     )
 
@@ -110,6 +116,7 @@ def run_mirror_update_operation(
     repo: Repo,
     params: dict[str, Any],
     aptly_client: AptlyClient,
+    progress_callback: TaskProgressCallback | None = None,
 ) -> dict[str, Any]:
     if not repo.mirror_enabled:
         return {
@@ -130,6 +137,7 @@ def run_mirror_update_operation(
         max_tries=repo.mirror_max_tries,
         poll_interval=int(params.get("poll_interval", 5)),
         max_wait_seconds=int(params.get("max_wait_seconds", 3600)),
+        progress_callback=progress_callback,
     )
 
     sync_result = sync_aptly_inventory(
@@ -153,6 +161,7 @@ def run_snapshot_create_operation(
     repo: Repo,
     params: dict[str, Any],
     aptly_client: AptlyClient,
+    progress_callback: TaskProgressCallback | None = None,
 ) -> dict[str, Any]:
     if not repo.snapshot_enabled:
         return {
@@ -176,6 +185,7 @@ def run_snapshot_create_operation(
         wait=bool(params.get("wait", True)),
         poll_interval=int(params.get("poll_interval", 5)),
         max_wait_seconds=int(params.get("max_wait_seconds", 3600)),
+        progress_callback=progress_callback,
     )
 
     sync_result = sync_aptly_inventory(
@@ -200,6 +210,7 @@ def run_publish_switch_operation(
     repo: Repo,
     params: dict[str, Any],
     aptly_client: AptlyClient,
+    progress_callback: TaskProgressCallback | None = None,
 ) -> dict[str, Any]:
     if not repo.publish_enabled:
         return {
@@ -235,6 +246,9 @@ def run_publish_switch_operation(
         force_overwrite=bool(params.get("force_overwrite", False)),
         acquire_by_hash=repo.publish_acquire_by_hash,
         signing=get_publish_signing(repo),
+        poll_interval=int(params.get("poll_interval", 5)),
+        max_wait_seconds=int(params.get("max_wait_seconds", 3600)),
+        progress_callback=progress_callback,
     )
 
     sync_result = sync_aptly_inventory(
@@ -297,9 +311,28 @@ def run_retention_cleanup_operation(
         session.exec(
             select(AptlySnapshotState)
             .where(AptlySnapshotState.source_mirror_name == mirror_name)
-            .order_by(AptlySnapshotState.created_at_aptly.desc())
+            .order_by(
+                AptlySnapshotState.created_at_aptly.desc().nullslast(),
+                AptlySnapshotState.item_updated_at.desc(),
+                AptlySnapshotState.id.desc(),
+            )
         ).all()
     )
+
+    if len(snapshots) <= keep_last:
+        return {
+            "status": "skipped",
+            "operation": SCRIPT_RETENTION_CLEANUP,
+            "repo_id": repo.id,
+            "repo_name": repo.name,
+            "mirror_name": mirror_name,
+            "keep_last": keep_last,
+            "total_snapshots": len(snapshots),
+            "deleted": [],
+            "skipped": [],
+            "errors": [],
+            "reason": "Snapshot count is within retention limit",
+        }
 
     published_snapshot_names = get_published_snapshot_names(session)
     candidates = snapshots[keep_last:]
@@ -358,6 +391,7 @@ def run_repository_operation_step(
     repo_id: int,
     params: dict[str, Any] | None,
     aptly_client: AptlyClient,
+    progress_callback: TaskProgressCallback | None = None,
 ) -> dict[str, Any]:
     repo = get_repo_or_404(session, repo_id)
     params = params or {}
@@ -370,6 +404,7 @@ def run_repository_operation_step(
             repo=repo,
             params=params,
             aptly_client=aptly_client,
+            progress_callback=progress_callback,
         )
     elif script_name == SCRIPT_SNAPSHOT_CREATE:
         result = run_snapshot_create_operation(
@@ -377,6 +412,7 @@ def run_repository_operation_step(
             repo=repo,
             params=params,
             aptly_client=aptly_client,
+            progress_callback=progress_callback,
         )
     elif script_name == SCRIPT_PUBLISH_SWITCH:
         result = run_publish_switch_operation(
@@ -384,6 +420,7 @@ def run_repository_operation_step(
             repo=repo,
             params=params,
             aptly_client=aptly_client,
+            progress_callback=progress_callback,
         )
     elif script_name == SCRIPT_RETENTION_CLEANUP:
         result = run_retention_cleanup_operation(

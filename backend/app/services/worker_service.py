@@ -50,6 +50,29 @@ def mark_queue_item_running(item: WorkerQueueItem, worker_id: str, session: Sess
     session.commit()
 
 def mark_step_success(item: WorkerQueueItem, log: str, session: Session) -> None:
+    mark_step_completed(
+        item=item,
+        status=WorkerQueueStatus.SUCCESS,
+        log=log,
+        session=session,
+    )
+
+
+def mark_step_skipped(item: WorkerQueueItem, log: str, session: Session) -> None:
+    mark_step_completed(
+        item=item,
+        status=WorkerQueueStatus.SKIPPED,
+        log=log,
+        session=session,
+    )
+
+
+def mark_step_completed(
+    item: WorkerQueueItem,
+    status: WorkerQueueStatus,
+    log: str,
+    session: Session,
+) -> None:
     now = datetime.utcnow()
     session.refresh(item)
     if item.status == WorkerQueueStatus.CANCELED:
@@ -60,7 +83,7 @@ def mark_step_success(item: WorkerQueueItem, log: str, session: Session) -> None
         session.commit()
         return
 
-    item.status = WorkerQueueStatus.SUCCESS
+    item.status = status
     item.finished_at = now
     item.log = log
     item.updated_at = now
@@ -118,11 +141,49 @@ def json_log(payload: dict[str, Any]) -> str:
     )
 
 
+def update_queue_item_progress(
+    *,
+    item_id: int | None,
+    script_name: str,
+    job: Job,
+    step: JobStep,
+    repo_id: int,
+    progress: dict[str, Any],
+    session: Session,
+) -> None:
+    if item_id is None:
+        return
+
+    try:
+        item = session.get(WorkerQueueItem, item_id)
+        if item is None or item.status != WorkerQueueStatus.RUNNING:
+            return
+
+        now = datetime.utcnow()
+        item.log = json_log(
+            {
+                "status": "running",
+                "script_name": script_name,
+                "job_id": job.id,
+                "job_step_id": step.id,
+                "repo_id": repo_id,
+                "aptly_task": progress,
+            }
+        )
+        item.heartbeat_at = now
+        item.updated_at = now
+        session.add(item)
+        session.commit()
+    except Exception:
+        session.rollback()
+
+
 def run_script_step(
     *,
     script: Script,
     job: Job,
     step: JobStep,
+    queue_item: WorkerQueueItem,
     session: Session,
 ) -> dict[str, Any]:
     params = step.params or {}
@@ -134,6 +195,15 @@ def run_script_step(
             repo_id=job.repo_id,
             params=params,
             aptly_client=make_aptly_client(),
+            progress_callback=lambda progress: update_queue_item_progress(
+                item_id=queue_item.id,
+                script_name=script.name,
+                job=job,
+                step=step,
+                repo_id=job.repo_id,
+                progress=progress,
+                session=session,
+            ),
         )
 
     raise ValueError(
@@ -177,8 +247,17 @@ def run_queue_item(item: WorkerQueueItem, session: Session, worker_id: str = "wo
             script=script,
             job=job,
             step=step,
+            queue_item=item,
             session=session,
         )
+        if result.get("status") == "skipped" or result.get("skipped") is True:
+            mark_step_skipped(
+                item=item,
+                log=json_log(result),
+                session=session,
+            )
+            return session.get(WorkerQueueItem, item.id)
+
         mark_step_success(
             item=item,
             log=json_log(result),

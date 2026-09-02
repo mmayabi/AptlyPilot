@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -53,27 +54,23 @@ def parse_aptly_datetime(value: str | None) -> datetime | None:
 def extract_source_mirror_name_from_snapshot_description(
     description: str | None,
 ) -> str | None:
-    """
-    Extract mirror name from snapshot description if it has this format:
-
-    Snapshot from mirror [debian-11-bullseye-security]: ...
-    """
-
     if not description:
         return None
 
     prefix = "Snapshot from mirror ["
-    if not description.startswith(prefix):
-        return None
+    if description.startswith(prefix):
+        rest = description[len(prefix):]
+        end_index = rest.find("]")
 
-    rest = description[len(prefix):]
-    end_index = rest.find("]")
+        if end_index != -1:
+            source_name = rest[:end_index].strip()
+            return source_name or None
 
-    if end_index == -1:
-        return None
+    match = re.search(r"\bfrom mirror\s+\[?([^\]\s:]+)\]?", description)
+    if match:
+        return match.group(1).strip() or None
 
-    source_name = rest[:end_index].strip()
-    return source_name or None
+    return None
 
 def build_publish_identity(payload: dict[str, Any]) -> tuple[str, str, str, str]:
     """

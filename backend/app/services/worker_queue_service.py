@@ -324,6 +324,11 @@ def get_pipeline_status(items: list[WorkerQueueRead]) -> str:
         return WorkerQueueStatus.SUCCESS
     if statuses and all(status == WorkerQueueStatus.SKIPPED for status in statuses):
         return WorkerQueueStatus.SKIPPED
+    if statuses and all(
+        status in [WorkerQueueStatus.SUCCESS, WorkerQueueStatus.SKIPPED]
+        for status in statuses
+    ):
+        return WorkerQueueStatus.SUCCESS
 
     return "mixed"
 

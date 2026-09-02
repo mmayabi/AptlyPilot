@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import quote
 
@@ -9,6 +10,26 @@ import requests
 
 class AptlyAPIError(Exception):
     pass
+
+
+SUCCESS_TASK_STATES = {
+    "success",
+    "succeeded",
+    "done",
+    "completed",
+    "complete",
+    "finished",
+}
+FAILED_TASK_STATES = {
+    "failed",
+    "failure",
+    "error",
+    "errored",
+    "canceled",
+    "cancelled",
+}
+DEFAULT_TERMINAL_TASK_STATES = {2, 3}
+TaskProgressCallback = Callable[[dict[str, Any]], None]
 
 
 class AptlyClient:
@@ -110,6 +131,9 @@ class AptlyClient:
 
         return data
 
+    def get_task_detail(self, task_id: int | str) -> Any:
+        return self.request("GET", f"/api/tasks/{task_id}/detail")
+
     def get_task_return_value(self, task_id: int | str) -> Any:
         return self.request("GET", f"/api/tasks/{task_id}/return_value")
 
@@ -130,43 +154,58 @@ class AptlyClient:
         poll_interval: int = 5,
         max_wait_seconds: int = 3600,
         terminal_states: set[int] | None = None,
+        progress_callback: TaskProgressCallback | None = None,
     ) -> dict[str, Any]:
-        """
-        منتظر پایان task می‌ماند.
-
-        نکته:
-        در نمونه‌ای که خودت از Aptly دادی، State=3 یعنی task تمام شده است.
-        برای همین مقدار پیش‌فرض terminal_states برابر {3} است.
-        """
-
         if terminal_states is None:
-            terminal_states = {3}
+            terminal_states = DEFAULT_TERMINAL_TASK_STATES
 
         started_at = time.monotonic()
 
         while True:
             task = self.get_task(task_id)
-            state = task.get("State")
+            state = self._extract_task_state(task)
+            detail = self._get_task_detail_safely(task_id)
+            output = self._get_task_output_safely(task_id)
 
-            if state in terminal_states:
+            self._emit_task_progress(
+                progress_callback=progress_callback,
+                payload={
+                    "task_id": task_id,
+                    "task": task,
+                    "detail": detail,
+                    "output": output,
+                },
+            )
+
+            if self._task_has_failed(task):
                 return_value = self.get_task_return_value(task_id)
-                output = self.get_task_output(task_id)
+                raise AptlyAPIError(
+                    f"Aptly task {task_id} failed. State: {state}. "
+                    f"Return value: {return_value}. Output:\n{output}"
+                )
+
+            if self._task_has_succeeded(task, terminal_states):
+                return_value = self.get_task_return_value(task_id)
 
                 result = {
                     "task_id": task_id,
                     "task": task,
+                    "detail": detail,
                     "return_value": return_value,
                     "output": output,
                 }
 
-                code = None
                 if isinstance(return_value, dict):
                     code = return_value.get("Code")
-
-                if code is not None and int(code) >= 400:
-                    raise AptlyAPIError(
-                        f"Aptly task {task_id} failed with code {code}:\n{output}"
-                    )
+                    if code is not None and int(code) >= 400:
+                        raise AptlyAPIError(
+                            f"Aptly task {task_id} failed with code {code}:\n{output}"
+                        )
+                elif isinstance(return_value, int):
+                    if return_value != 0:
+                        raise AptlyAPIError(
+                            f"Aptly task {task_id} failed with code {return_value}:\n{output}"
+                        )
 
                 return result
 
@@ -176,6 +215,71 @@ class AptlyClient:
                 )
 
             time.sleep(poll_interval)
+
+    def _emit_task_progress(
+        self,
+        *,
+        progress_callback: TaskProgressCallback | None,
+        payload: dict[str, Any],
+    ) -> None:
+        if progress_callback is None:
+            return
+
+        progress_callback(payload)
+
+    def _get_task_detail_safely(self, task_id: int | str) -> Any:
+        try:
+            return self.get_task_detail(task_id)
+        except AptlyAPIError as exc:
+            return {
+                "error": str(exc),
+            }
+
+    def _get_task_output_safely(self, task_id: int | str) -> str:
+        try:
+            return self.get_task_output(task_id)
+        except AptlyAPIError as exc:
+            return f"Could not fetch task output: {exc}"
+
+    def _extract_task_state(self, task: dict[str, Any]) -> Any:
+        for key in ("State", "state", "Status", "status"):
+            if key in task:
+                return task[key]
+        return None
+
+    def _normalize_task_state(self, state: Any) -> str:
+        return str(state).strip().lower()
+
+    def _task_has_failed(self, task: dict[str, Any]) -> bool:
+        for key in ("Error", "error", "Err", "err", "Failure", "failure"):
+            if task.get(key):
+                return True
+
+        return self._normalize_task_state(
+            self._extract_task_state(task)
+        ) in FAILED_TASK_STATES
+
+    def _task_has_succeeded(
+        self,
+        task: dict[str, Any],
+        terminal_states: set[int],
+    ) -> bool:
+        for key in ("Done", "done", "Finished", "finished"):
+            if task.get(key) is True:
+                return True
+
+        state = self._extract_task_state(task)
+        if isinstance(state, int):
+            return state in terminal_states
+
+        normalized_state = self._normalize_task_state(state)
+        if normalized_state in SUCCESS_TASK_STATES:
+            return True
+
+        if normalized_state.isdigit():
+            return int(normalized_state) in terminal_states
+
+        return False
 
     # -----------------------------
     # Mirror update
@@ -192,6 +296,7 @@ class AptlyClient:
         max_tries: int | None = None,
         poll_interval: int = 5,
         max_wait_seconds: int = 3600,
+        progress_callback: TaskProgressCallback | None = None,
     ) -> dict[str, Any]:
         """
         اجرای mirror update.
@@ -256,6 +361,7 @@ class AptlyClient:
             task_id=task_id,
             poll_interval=poll_interval,
             max_wait_seconds=max_wait_seconds,
+            progress_callback=progress_callback,
         )
 
         return {
@@ -286,6 +392,31 @@ class AptlyClient:
                     return data[key]
 
         raise AptlyAPIError(f"Cannot extract task id from Aptly response: {data}")
+
+    def _extract_task_id_or_none(self, data: Any) -> int | str | None:
+        try:
+            return self._extract_task_id(data)
+        except AptlyAPIError:
+            return None
+
+    def _wait_task_response_if_present(
+        self,
+        data: Any,
+        *,
+        poll_interval: int = 5,
+        max_wait_seconds: int = 3600,
+        progress_callback: TaskProgressCallback | None = None,
+    ) -> dict[str, Any] | None:
+        task_id = self._extract_task_id_or_none(data)
+        if task_id is None:
+            return None
+
+        return self.wait_task(
+            task_id=task_id,
+            poll_interval=poll_interval,
+            max_wait_seconds=max_wait_seconds,
+            progress_callback=progress_callback,
+        )
     
     # -----------------------------
     # Snapshot Create from Mirror
@@ -321,6 +452,7 @@ class AptlyClient:
         wait: bool = True,
         poll_interval: int = 5,
         max_wait_seconds: int = 3600,
+        progress_callback: TaskProgressCallback | None = None,
     ) -> dict[str, Any]:
         """
         ساخت snapshot از mirror.
@@ -416,6 +548,7 @@ class AptlyClient:
             task_id=task_id,
             poll_interval=poll_interval,
             max_wait_seconds=max_wait_seconds,
+            progress_callback=progress_callback,
         )
 
         return {
@@ -528,6 +661,55 @@ class AptlyClient:
 
         return None
 
+    def _value_contains_snapshot_name(self, value: Any, snapshot_name: str) -> bool:
+        if value == snapshot_name:
+            return True
+
+        if isinstance(value, dict):
+            return any(
+                self._value_contains_snapshot_name(item, snapshot_name)
+                for item in value.values()
+            )
+
+        if isinstance(value, list):
+            return any(
+                self._value_contains_snapshot_name(item, snapshot_name)
+                for item in value
+            )
+
+        return False
+
+    def _get_verified_snapshot_publish(
+        self,
+        *,
+        prefix: str | None,
+        distribution: str,
+        storage: str | None,
+        snapshot_name: str,
+    ) -> dict[str, Any]:
+        publish = self._find_publish(
+            prefix=prefix,
+            distribution=distribution,
+            storage=storage,
+        )
+
+        if publish is None:
+            raise AptlyAPIError(
+                f"Published repository was not found after publish operation: "
+                f"prefix={prefix or '.'}, distribution={distribution}, "
+                f"snapshot={snapshot_name}"
+            )
+
+        if not self._value_contains_snapshot_name(publish, snapshot_name):
+            raise AptlyAPIError(
+                f"Published repository does not reference requested snapshot after "
+                f"publish operation: prefix={prefix or '.'}, "
+                f"distribution={distribution}, snapshot={snapshot_name}, "
+                f"publish={publish}"
+            )
+
+        return publish
+
     def publish_exists(
         self,
         *,
@@ -560,6 +742,9 @@ class AptlyClient:
         but_automatic_upgrades: str | None = None,
         signing: dict[str, Any] | None = None,
         fail_if_exists: bool = True,
+        poll_interval: int = 5,
+        max_wait_seconds: int = 3600,
+        progress_callback: TaskProgressCallback | None = None,
     ) -> dict[str, Any]:
         """
         publish کردن snapshot برای اولین بار.
@@ -652,6 +837,7 @@ class AptlyClient:
             data = self.request(
                 "POST",
                 f"/api/publish/{encoded_prefix}",
+                params={"_async": "1"},
                 json=body,
             )
         except AptlyAPIError as exc:
@@ -675,6 +861,19 @@ class AptlyClient:
 
             raise
 
+        task_result = self._wait_task_response_if_present(
+            data,
+            poll_interval=poll_interval,
+            max_wait_seconds=max_wait_seconds,
+            progress_callback=progress_callback,
+        )
+        verified_publish = self._get_verified_snapshot_publish(
+            prefix=prefix,
+            distribution=distribution,
+            storage=storage,
+            snapshot_name=snapshot_name,
+        )
+
         return {
             "mode": "publish",
             "created": True,
@@ -682,7 +881,8 @@ class AptlyClient:
             "storage": storage,
             "distribution": distribution,
             "snapshot_name": snapshot_name,
-            "publish": data,
+            "task_result": task_result,
+            "publish": verified_publish,
         }
 
     def switch_published_snapshot(
@@ -698,6 +898,9 @@ class AptlyClient:
         multi_dist: bool | None = None,
         signing: dict[str, Any] | None = None,
         fail_if_missing: bool = True,
+        poll_interval: int = 5,
+        max_wait_seconds: int = 3600,
+        progress_callback: TaskProgressCallback | None = None,
     ) -> dict[str, Any]:
         """
         تغییر publish موجود به snapshot جدید.
@@ -766,7 +969,21 @@ class AptlyClient:
         data = self.request(
             "PUT",
             f"/api/publish/{encoded_prefix}/{encoded_distribution}",
+            params={"_async": "1"},
             json=body,
+        )
+
+        task_result = self._wait_task_response_if_present(
+            data,
+            poll_interval=poll_interval,
+            max_wait_seconds=max_wait_seconds,
+            progress_callback=progress_callback,
+        )
+        verified_publish = self._get_verified_snapshot_publish(
+            prefix=prefix,
+            distribution=distribution,
+            storage=storage,
+            snapshot_name=snapshot_name,
         )
 
         return {
@@ -776,7 +993,8 @@ class AptlyClient:
             "storage": storage,
             "distribution": distribution,
             "snapshot_name": snapshot_name,
-            "publish": data,
+            "task_result": task_result,
+            "publish": verified_publish,
         }
 
     def publish_or_switch_snapshot(
@@ -797,6 +1015,9 @@ class AptlyClient:
         not_automatic: str | None = None,
         but_automatic_upgrades: str | None = None,
         signing: dict[str, Any] | None = None,
+        poll_interval: int = 5,
+        max_wait_seconds: int = 3600,
+        progress_callback: TaskProgressCallback | None = None,
     ) -> dict[str, Any]:
         """
         اگر publish وجود نداشت، publish می‌کند.
@@ -829,6 +1050,9 @@ class AptlyClient:
                 but_automatic_upgrades=but_automatic_upgrades,
                 signing=signing,
                 fail_if_exists=True,
+                poll_interval=poll_interval,
+                max_wait_seconds=max_wait_seconds,
+                progress_callback=progress_callback,
             )
 
         return self.switch_published_snapshot(
@@ -842,6 +1066,9 @@ class AptlyClient:
             multi_dist=multi_dist,
             signing=signing,
             fail_if_missing=True,
+            poll_interval=poll_interval,
+            max_wait_seconds=max_wait_seconds,
+            progress_callback=progress_callback,
         )
 
     def drop_publish(
