@@ -1,0 +1,22 @@
+<section class="rounded-lg border border-slate-200 bg-white">
+    <div class="border-b border-slate-100 px-5 py-4">
+        <h2 class="text-base font-semibold text-slate-900">Profile</h2>
+    </div>
+
+    <dl class="divide-y divide-slate-100 text-sm">
+        <div class="grid gap-1 px-5 py-3">
+            <dt class="font-medium text-slate-500">Username</dt>
+            <dd class="text-slate-900">{{ current_user.username }}</dd>
+        </div>
+
+        <div class="grid gap-1 px-5 py-3">
+            <dt class="font-medium text-slate-500">Email</dt>
+            <dd class="text-slate-900">{{ current_user.email or "-" }}</dd>
+        </div>
+
+        <div class="grid gap-1 px-5 py-3">
+            <dt class="font-medium text-slate-500">Role</dt>
+            <dd class="text-slate-900">{{ current_user.role|title }}</dd>
+        </div>
+    </dl>
+</section>

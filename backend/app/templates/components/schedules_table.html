@@ -61,6 +61,7 @@
                 </td>
                 <td class="px-3 py-3 text-right">
                     <div id="schedule-run-result-{{ schedule.id }}" class="mb-2 text-left"></div>
+                    {% if current_user.is_superuser or current_user.role in ["admin", "operator"] %}
                     <button
                         type="button"
                         class="inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
@@ -70,6 +71,9 @@
                         hx-on::after-request="htmx.trigger(document.body, 'schedules-refresh')">
                         Run Now
                     </button>
+                    {% else %}
+                    <span class="text-slate-400">-</span>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}

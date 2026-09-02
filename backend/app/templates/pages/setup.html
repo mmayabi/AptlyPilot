@@ -1,0 +1,176 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Initial setup | AptlyPilot{% endblock %}
+
+{% block body %}
+
+<div class="min-h-screen grid lg:grid-cols-2 bg-slate-100">
+
+    <div class="flex items-center justify-center p-8">
+
+        <div class="w-full max-w-md">
+
+            <div class="mb-10">
+
+                <div class="flex items-center gap-3 mb-4">
+
+                    <div class="h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl">
+                        AP
+                    </div>
+
+                    <div>
+
+                        <h1 class="text-3xl font-bold text-slate-900">
+                            AptlyPilot
+                        </h1>
+
+                        <p class="text-slate-500">
+                            Initial Administrator Setup
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% if error %}
+
+            <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+
+                <p class="text-red-700 text-sm">
+                    {{ error }}
+                </p>
+
+            </div>
+
+            {% endif %}
+
+            <form
+                action="/setup"
+                method="post"
+                class="space-y-5">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        Username
+                    </label>
+                    <input
+                        type="text"
+                        name="username"
+                        value="{{ username|default('') }}"
+                        required
+                        minlength="3"
+                        autofocus
+                        autocomplete="username"
+                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        Email
+                    </label>
+                    <input
+                        type="email"
+                        name="email"
+                        value="{{ email|default('') }}"
+                        autocomplete="email"
+                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        Full Name
+                    </label>
+                    <input
+                        type="text"
+                        name="full_name"
+                        value="{{ full_name|default('') }}"
+                        autocomplete="name"
+                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        Password
+                    </label>
+                    <input
+                        type="password"
+                        name="password"
+                        required
+                        minlength="8"
+                        autocomplete="new-password"
+                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        Confirm Password
+                    </label>
+                    <input
+                        type="password"
+                        name="confirm_password"
+                        required
+                        minlength="8"
+                        autocomplete="new-password"
+                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none">
+                </div>
+
+                <button
+                    type="submit"
+                    class="w-full rounded-lg bg-blue-600 py-3 text-white font-medium hover:bg-blue-700 transition">
+
+                    Create Admin Account
+
+                </button>
+
+            </form>
+
+            <div class="mt-8 text-center text-sm text-slate-500">
+                AptlyPilot © 2026
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="hidden lg:flex bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900">
+
+        <div class="m-auto max-w-lg px-12 text-white">
+
+            <div class="inline-flex rounded-full bg-white/10 px-4 py-2 text-sm mb-8">
+                First Run
+            </div>
+
+            <h2 class="text-5xl font-bold leading-tight mb-6">
+                Create the first
+                <br>
+                administrator
+            </h2>
+
+            <p class="text-lg text-slate-300 leading-8 mb-10">
+                This setup screen is only available while no users exist.
+                After the first administrator is created, normal sign-in is used.
+            </p>
+
+            <div class="grid grid-cols-2 gap-6">
+
+                <div class="rounded-xl bg-white/10 p-5">
+                    <div class="text-3xl font-bold">RBAC</div>
+                    <div class="text-slate-300 mt-2">Admin Access</div>
+                </div>
+
+                <div class="rounded-xl bg-white/10 p-5">
+                    <div class="text-3xl font-bold">Hash</div>
+                    <div class="text-slate-300 mt-2">Password Storage</div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

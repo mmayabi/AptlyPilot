@@ -115,6 +115,7 @@
                         hx-swap="innerHTML">
                         Refresh Runs
                     </button>
+                    {% if current_user.is_superuser or current_user.role in ["admin", "operator"] %}
                     <button
                         type="button"
                         class="inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
@@ -124,6 +125,7 @@
                         hx-on::after-request="htmx.trigger(document.body, 'repository-runs-refresh')">
                         Run Pipeline
                     </button>
+                    {% endif %}
                 </div>
             </div>
 

@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from sqlmodel import Session
 
@@ -54,6 +54,24 @@ def register_user(session: Session, user_in: UserCreate) -> User:
     )
 
     return create_user(session, user)
+
+
+def change_user_password(
+    session: Session,
+    user: User,
+    current_password: str,
+    new_password: str,
+) -> bool:
+    if not verify_password(current_password, user.hashed_password):
+        return False
+
+    user.hashed_password = hash_password(new_password)
+    user.updated_at = datetime.utcnow()
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    return True
 
 
 def create_initial_admin(

@@ -10,6 +10,10 @@
 {% set compliance_ok_pct = (overview.compliant_count * 100 / total_repos)|round(0, "floor")|int if total_repos else 0 %}
 {% set retention_ok_total = overview.retention_ok_count + overview.retention_exceeded_count %}
 {% set retention_ok_pct = (overview.retention_ok_count * 100 / retention_ok_total)|round(0, "floor")|int if retention_ok_total else 0 %}
+{% set can_operate = current_user.is_superuser or current_user.role in ["admin", "operator"] %}
+{% set actions = [
+    {"label":"Refresh Aptly State","icon":"Refresh","hx_post":"/dashboard/sync-aptly","hx_target":"#sync-actions-card","hx_swap":"outerHTML"}
+] if can_operate else [] %}
 
 {% with title="Dashboard", subtitle="Enterprise Repository Management Platform", actions=actions %}
 {% include "components/page_header.html" %}

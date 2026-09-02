@@ -1,0 +1,27 @@
+{% extends "layouts/layout.html" %}
+
+{% block title %}
+Account
+{% endblock %}
+
+{% block content %}
+
+{% with
+title="Account",
+subtitle="Manage your profile and sign-in credentials",
+actions=[]
+%}
+{% include "components/page_header.html" %}
+{% endwith %}
+
+<div class="grid gap-6 xl:grid-cols-3">
+    <div class="xl:col-span-1">
+        {% include "components/profile_panel.html" %}
+    </div>
+
+    <div class="xl:col-span-2">
+        {% include "components/change_password_panel.html" %}
+    </div>
+</div>
+
+{% endblock %}

@@ -3,6 +3,15 @@ from sqlmodel import Session, select
 from app.models.user import User
 
 
+def count_users(session: Session) -> int:
+    return len(list_users(session))
+
+
+def list_users(session: Session) -> list[User]:
+    statement = select(User).order_by(User.username)
+    return list(session.exec(statement).all())
+
+
 def get_user_by_username(session: Session, username: str) -> User | None:
     statement = select(User).where(User.username == username)
     return session.exec(statement).first()

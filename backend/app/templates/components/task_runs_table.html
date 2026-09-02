@@ -43,7 +43,7 @@
                 <div class="mt-1 text-sm text-slate-700">{{ run.finished_at or "-" }}</div>
             </div>
             <div class="flex items-end justify-start lg:justify-end">
-                {% if run.status == "queued" or run.status == "running" %}
+                {% if (run.status == "queued" or run.status == "running") and (current_user.is_superuser or current_user.role in ["admin", "operator"]) %}
                 <button
                     type="button"
                     class="inline-flex items-center rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"

@@ -6,11 +6,24 @@ Repository Dashboard
 
 {% block content %}
 
-{% set actions = [
-    {"label":"Actual State","icon":"Refresh","hx_post":"/repositories/sync-aptly","hx_target":"#ui-sync-result","hx_swap":"innerHTML"},
-    {"label":"Expected Config","icon":"Sync","hx_post":"/repositories/sync-from-config","hx_target":"#ui-sync-result","hx_swap":"innerHTML","class":"bg-slate-800 hover:bg-slate-900 text-white"},
-    {"label":"Dashboard","icon":"Overview","href":"/dashboard","class":"border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}
-] %}
+{% set can_operate = current_user.is_superuser or current_user.role in ["admin", "operator"] %}
+{% set can_admin = current_user.is_superuser or current_user.role == "admin" %}
+{% if can_admin %}
+    {% set actions = [
+        {"label":"Actual State","icon":"Refresh","hx_post":"/repositories/sync-aptly","hx_target":"#ui-sync-result","hx_swap":"innerHTML"},
+        {"label":"Expected Config","icon":"Sync","hx_post":"/repositories/sync-from-config","hx_target":"#ui-sync-result","hx_swap":"innerHTML","class":"bg-slate-800 hover:bg-slate-900 text-white"},
+        {"label":"Dashboard","icon":"Overview","href":"/dashboard","class":"border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}
+    ] %}
+{% elif can_operate %}
+    {% set actions = [
+        {"label":"Actual State","icon":"Refresh","hx_post":"/repositories/sync-aptly","hx_target":"#ui-sync-result","hx_swap":"innerHTML"},
+        {"label":"Dashboard","icon":"Overview","href":"/dashboard","class":"border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}
+    ] %}
+{% else %}
+    {% set actions = [
+        {"label":"Dashboard","icon":"Overview","href":"/dashboard","class":"border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}
+    ] %}
+{% endif %}
 
 {% with
 title="Repositories",

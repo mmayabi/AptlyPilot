@@ -16,7 +16,20 @@
             🌙
         </button>
 
-        <div class="flex items-center gap-3">
+        <form
+            action="/logout"
+            method="post">
+            <button
+                type="submit"
+                class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                title="Sign out">
+                Logout
+            </button>
+        </form>
+
+        <a
+            href="/account"
+            class="{% if active_page=='account' %}text-blue-700{% else %}text-slate-700 hover:text-blue-600{% endif %} flex items-center gap-3">
 
             <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
                 {{ current_user.username[0]|upper }}
@@ -38,7 +51,7 @@
 
             </div>
 
-        </div>
+        </a>
 
     </div>
 
