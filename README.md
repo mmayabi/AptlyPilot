@@ -1,8 +1,6 @@
-# AptlyPilot
-
-<p align="center">
-  <img src="docs/images/aptlypilot-banner.png" alt="AptlyPilot" />
-</p>
+<h2 align="center">
+AptlyPilot
+</h2>
 
 <h3 align="center">
 Repository as Code Platform for Debian Package Management
