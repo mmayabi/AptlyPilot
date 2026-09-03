@@ -1,0 +1,772 @@
+defaults:
+  mirror:
+    enabled: true
+    ignore_signatures: false
+    max_tries: 3
+  snapshot:
+    enabled: true
+    naming: '{name}-{timestamp}'
+    timestamp_format: '%Y%m%d-%H%M'
+  publish:
+    enabled: true
+    endpoint: filesystem:repository
+    gpg_key: XXXXXXXXXXXXXXXXXXX
+    skip_signing: false
+    acquire_by_hash: true
+    skip_bz2: true
+    skip_contents: true
+  test:
+    enabled: true
+    checks: [metadata]
+  retention:
+    keep_last: 3
+  schedule:
+    enabled: true
+    type: weekly
+repos:
+  debian:
+    bullseye:
+      debian-11-bullseye:
+        mirror:
+          archive_url: https://deb.debian.org/debian
+          distribution: bullseye
+          components: [main, contrib, non-free]
+          architectures: [amd64]
+        publish:
+          prefix: debian
+          distribution: bullseye
+          components: [contrib, main, non-free]
+          architectures: [amd64]
+          label: Debian
+          origin: Debian
+          codename: bullseye
+          suite: oldoldstable
+      debian-11-bullseye-security:
+        mirror:
+          archive_url: https://deb.debian.org/debian-security
+          distribution: bullseye-security
+          components: [updates/main, updates/contrib, updates/non-free]
+          architectures: [amd64]
+        publish:
+          prefix: debian-security
+          distribution: bullseye-security
+          components: [updates/contrib, updates/main, updates/non-free]
+          architectures: [amd64]
+          label: Debian-Security
+          origin: Debian
+          codename: bullseye-security
+          suite: oldoldstable-security
+      debian-11-bullseye-updates:
+        mirror:
+          archive_url: https://deb.debian.org/debian
+          distribution: bullseye-updates
+          components: [main, contrib, non-free]
+          architectures: [amd64]
+        publish:
+          prefix: debian
+          distribution: bullseye-updates
+          components: [contrib, main, non-free]
+          architectures: [amd64]
+          label: Debian
+          origin: Debian
+          codename: bullseye-updates
+          suite: oldoldstable
+      debian-11-bullseye-backports:
+        mirror:
+          archive_url: https://archive.ito.gov.ir/debian
+          distribution: bullseye-backports
+          components: [main, contrib, non-free]
+          architectures: [amd64]
+        publish:
+          prefix: debian
+          distribution: bullseye-backports
+          components: [contrib, main, non-free]
+          architectures: [amd64]
+          label: Debian
+          origin: Debian
+          codename: bullseye-backports
+          suite: oldoldstable
+    bookworm:
+      debian-12-bookworm:
+        mirror:
+          archive_url: https://deb.debian.org/debian
+          distribution: bookworm
+          components: [main, contrib, non-free, non-free-firmware]
+          architectures: [amd64]
+        publish:
+          prefix: debian
+          distribution: bookworm
+          components: [contrib, main, non-free, non-free-firmware]
+          architectures: [amd64]
+          label: Debian
+          origin: Debian
+          codename: bookworm
+          suite: oldstable
+      debian-12-bookworm-security:
+        mirror:
+          archive_url: https://deb.debian.org/debian-security
+          distribution: bookworm-security
+          components: [updates/main, updates/contrib, updates/non-free-firmware, updates/non-free]
+          architectures: [amd64]
+        publish:
+          prefix: debian-security
+          distribution: bookworm-security
+          components: [updates/contrib, updates/main, updates/non-free, updates/non-free-firmware]
+          architectures: [amd64]
+          label: Debian-Security
+          origin: Debian
+          codename: bookworm-security
+          suite: oldstable-security
+      debian-12-bookworm-updates:
+        mirror:
+          archive_url: https://deb.debian.org/debian
+          distribution: bookworm-updates
+          components: [main, contrib, non-free, non-free-firmware]
+          architectures: [amd64]
+        publish:
+          prefix: debian
+          distribution: bookworm-updates
+          components: [contrib, main, non-free, non-free-firmware]
+          architectures: [amd64]
+          label: Debian
+          origin: Debian
+          codename: bookworm-updates
+          suite: oldstable
+      debian-12-bookworm-backports:
+        mirror:
+          archive_url: https://deb.debian.org/debian
+          distribution: bookworm-backports
+          components: [main, contrib, non-free, non-free-firmware]
+          architectures: [amd64]
+        publish:
+          prefix: debian
+          distribution: bookworm-backports
+          components: [contrib, main, non-free, non-free-firmware]
+          architectures: [amd64]
+          label: Debian
+          origin: Debian
+          codename: bookworm-backports
+          suite: oldstable
+    trixie:
+      debian-13-trixie:
+        mirror:
+          archive_url: https://deb.debian.org/debian
+          distribution: trixie
+          components: [main, contrib, non-free, non-free-firmware]
+          architectures: [amd64]
+        publish:
+          prefix: debian
+          distribution: trixie
+          components: [contrib, main, non-free, non-free-firmware]
+          architectures: [amd64]
+          label: Debian
+          origin: Debian
+          codename: trixie
+          suite: stable
+      debian-13-trixie-security:
+        mirror:
+          archive_url: https://deb.debian.org/debian-security
+          distribution: trixie-security
+          components: [updates/main, updates/contrib, updates/non-free-firmware, updates/non-free]
+          architectures: [amd64]
+        publish:
+          prefix: debian-security
+          distribution: trixie-security
+          components: [updates/contrib, updates/main, updates/non-free, updates/non-free-firmware]
+          architectures: [amd64]
+          label: Debian-Security
+          origin: Debian
+          codename: trixie-security
+          suite: stable-security
+      debian-13-trixie-updates:
+        mirror:
+          archive_url: https://deb.debian.org/debian
+          distribution: trixie-updates
+          components: [main, contrib, non-free, non-free-firmware]
+          architectures: [amd64]
+        publish:
+          prefix: debian
+          distribution: trixie-updates
+          components: [contrib, main, non-free, non-free-firmware]
+          architectures: [amd64]
+          label: Debian
+          origin: Debian
+          codename: trixie-updates
+          suite: stable
+      debian-13-trixie-backports:
+        mirror:
+          archive_url: https://deb.debian.org/debian
+          distribution: trixie-backports
+          components: [main, contrib, non-free, non-free-firmware]
+          architectures: [amd64]
+        publish:
+          prefix: debian
+          distribution: trixie-backports
+          components: [contrib, main, non-free, non-free-firmware]
+          architectures: [amd64]
+          label: Debian
+          origin: Debian
+          codename: trixie-backports
+          suite: stable
+  ubuntu:
+    bionic:
+      ubuntu-18.04-bionic:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: bionic
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: bionic
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: bionic
+          suite: bionic
+      ubuntu-18.04-bionic-security:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: bionic-security
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: bionic-security
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: bionic-security
+          suite: bionic-security
+      ubuntu-18.04-bionic-updates:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: bionic-updates
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: bionic-updates
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: bionic-updates
+          suite: bionic-updates
+      ubuntu-18.04-bionic-backports:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: bionic-backports
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: bionic-backports
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: bionic-backports
+          suite: bionic-backports
+      ubuntu-18.04-bionic-proposed:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: bionic-proposed
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: bionic-proposed
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: bionic-proposed
+          suite: bionic-proposed
+    focal:
+      ubuntu-20.04-focal:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: focal
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: focal
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: focal
+          suite: focal
+      ubuntu-20.04-focal-security:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: focal-security
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: focal-security
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: focal-security
+          suite: focal-security
+      ubuntu-20.04-focal-updates:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: focal-updates
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: focal-updates
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: focal-updates
+          suite: focal-updates
+      ubuntu-20.04-focal-backports:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: focal-backports
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: focal-backports
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: focal-backports
+          suite: focal-backports
+      ubuntu-20.04-focal-proposed:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: focal-proposed
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: focal-proposed
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: focal-proposed
+          suite: focal-proposed
+    jammy:
+      ubuntu-22.04-jammy:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: jammy
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: jammy
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: jammy
+          suite: jammy
+      ubuntu-22.04-jammy-security:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: jammy-security
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: jammy-security
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: jammy-security
+          suite: jammy-security
+      ubuntu-22.04-jammy-updates:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: jammy-updates
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: jammy-updates
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: jammy-updates
+          suite: jammy-updates
+      ubuntu-22.04-jammy-backports:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: jammy-backports
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: jammy-backports
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: jammy-backports
+          suite: jammy-backports
+      ubuntu-22.04-jammy-proposed:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: jammy-proposed
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64]
+        publish:
+          prefix: ubuntu
+          distribution: jammy-proposed
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: jammy-proposed
+          suite: jammy-proposed
+    noble:
+      ubuntu-24.04-noble:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: noble
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64, i386]
+        publish:
+          prefix: ubuntu
+          distribution: noble
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: noble
+          suite: noble
+      ubuntu-24.04-noble-security:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: noble-security
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64, i386]
+        publish:
+          prefix: ubuntu
+          distribution: noble-security
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: noble-security
+          suite: noble-security
+      ubuntu-24.04-noble-updates:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: noble-updates
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64, i386]
+        publish:
+          prefix: ubuntu
+          distribution: noble-updates
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: noble-updates
+          suite: noble-updates
+      ubuntu-24.04-noble-backports:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: noble-backports
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64, i386]
+        publish:
+          prefix: ubuntu
+          distribution: noble-backports
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: noble-backports
+          suite: noble-backports
+      ubuntu-24.04-noble-proposed:
+        mirror:
+          archive_url: http://archive.ubuntu.com/ubuntu
+          distribution: noble-proposed
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64, i386]
+        publish:
+          prefix: ubuntu
+          distribution: noble-proposed
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: noble-proposed
+          suite: noble-proposed
+    resolute:
+      ubuntu-26.04-resolute:
+        mirror:
+          archive_url: https://archive.ubuntu.com/ubuntu/ubuntu
+          distribution: resolute
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64, i386]
+        publish:
+          prefix: ubuntu
+          distribution: resolute
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64, i386]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: resolute
+          suite: resolute
+      ubuntu-26.04-resolute-security:
+        mirror:
+          archive_url: https://archive.ubuntu.com/ubuntu/ubuntu
+          distribution: resolute-security
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64, i386]
+        publish:
+          prefix: ubuntu
+          distribution: resolute-security
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64, i386]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: resolute-security
+          suite: resolute-security
+      ubuntu-26.04-resolute-updates:
+        mirror:
+          archive_url: https://archive.ubuntu.com/ubuntu/ubuntu
+          distribution: resolute-updates
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64, i386]
+        publish:
+          prefix: ubuntu
+          distribution: resolute-updates
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64, i386]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: resolute-updates
+          suite: resolute-updates
+      ubuntu-26.04-resolute-backports:
+        mirror:
+          archive_url: https://archive.ubuntu.com/ubuntu/ubuntu
+          distribution: resolute-backports
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64, i386]
+        publish:
+          prefix: ubuntu
+          distribution: resolute-backports
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64, i386]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: resolute-backports
+          suite: resolute-backports
+      ubuntu-26.04-resolute-proposed:
+        mirror:
+          archive_url: https://archive.ubuntu.com/ubuntu/ubuntu
+          distribution: resolute-proposed
+          components: [main, restricted, universe, multiverse]
+          architectures: [amd64, i386]
+        publish:
+          prefix: ubuntu
+          distribution: resolute-proposed
+          components: [main, multiverse, restricted, universe]
+          architectures: [amd64, i386]
+          label: Ubuntu
+          origin: Ubuntu
+          codename: resolute-proposed
+          suite: resolute-proposed
+  php-sury:
+    bullseye:
+      php-deb11:
+        mirror:
+          archive_url: https://packages.sury.org/php
+          distribution: bullseye
+          components: [main]
+          architectures: [amd64]
+        publish:
+          enabled: false
+    bookworm:
+      php-deb12:
+        mirror:
+          archive_url: https://packages.sury.org/php
+          distribution: bookworm
+          components: [main]
+          architectures: [amd64]
+        publish:
+          enabled: false
+    trixie:
+      php-deb13:
+        mirror:
+          archive_url: https://packages.sury.org/php
+          distribution: trixie
+          components: [main]
+          architectures: [amd64]
+        publish:
+          enabled: false
+  zabbix-7.0:
+    buster:
+      zabbix-7.0-deb10:
+        mirror:
+          archive_url: https://repo.zabbix.com/zabbix/7.0/debian
+          distribution: buster
+          components: [main]
+          architectures: [amd64]
+        publish:
+          prefix: zabbix
+          distribution: buster
+          components: [main]
+          architectures: [amd64]
+          label: zabbix
+          origin: Zabbix
+          codename: buster
+          suite: zabbix
+        schedule:
+          enabled: true
+          type: monthly
+    bullseye:
+      zabbix-7.0-deb11:
+        mirror:
+          archive_url: https://repo.zabbix.com/zabbix/7.0/debian
+          distribution: bullseye
+          components: [main]
+          architectures: [amd64]
+        publish:
+          prefix: zabbix
+          distribution: bullseye
+          components: [main]
+          architectures: [amd64]
+          label: zabbix
+          origin: Zabbix
+          codename: bullseye
+          suite: zabbix
+        schedule:
+          enabled: true
+          type: monthly
+    bookworm:
+      zabbix-7.0-deb12:
+        mirror:
+          archive_url: https://repo.zabbix.com/zabbix/7.0/debian
+          distribution: bookworm
+          components: [main]
+          architectures: [amd64]
+        publish:
+          prefix: zabbix
+          distribution: bookworm
+          components: [main]
+          architectures: [amd64]
+          label: zabbix
+          origin: Zabbix
+          codename: bookworm
+          suite: zabbix
+        schedule:
+          enabled: true
+          type: monthly
+    trixie:
+      zabbix-7.0-deb13:
+        mirror:
+          archive_url: https://repo.zabbix.com/zabbix/7.0/debian
+          distribution: trixie
+          components: [main]
+          architectures: [amd64]
+        publish:
+          prefix: zabbix
+          distribution: trixie
+          components: [main]
+          architectures: [amd64]
+          label: zabbix
+          origin: Zabbix
+          codename: trixie
+          suite: zabbix
+        schedule:
+          enabled: true
+          type: monthly
+    bionic:
+      zabbix-7.0-ubu18:
+        mirror:
+          archive_url: https://repo.zabbix.com/zabbix/7.0/ubuntu
+          distribution: bionic
+          components: [main]
+          architectures: [amd64]
+        publish:
+          prefix: zabbix
+          distribution: bionic
+          components: [main]
+          architectures: [amd64]
+          label: zabbix
+          origin: Zabbix
+          codename: bionic
+          suite: zabbix
+        schedule:
+          enabled: true
+          type: monthly
+    focal:
+      zabbix-7.0-ubu20:
+        mirror:
+          archive_url: https://repo.zabbix.com/zabbix/7.0/ubuntu
+          distribution: focal
+          components: [main]
+          architectures: [amd64]
+        publish:
+          prefix: zabbix
+          distribution: focal
+          components: [main]
+          architectures: [amd64]
+          label: zabbix
+          origin: Zabbix
+          codename: focal
+          suite: zabbix
+        schedule:
+          enabled: true
+          type: monthly
+    jammy:
+      zabbix-7.0-ubu22:
+        mirror:
+          archive_url: https://repo.zabbix.com/zabbix/7.0/ubuntu
+          distribution: jammy
+          components: [main]
+          architectures: [amd64]
+        publish:
+          prefix: zabbix
+          distribution: jammy
+          components: [main]
+          architectures: [amd64]
+          label: zabbix
+          origin: Zabbix
+          codename: jammy
+          suite: zabbix
+        schedule:
+          enabled: true
+          type: monthly
+    noble:
+      zabbix-7.0-ubu24:
+        mirror:
+          archive_url: https://repo.zabbix.com/zabbix/7.0/ubuntu
+          distribution: noble
+          components: [main]
+          architectures: [amd64]
+        publish:
+          prefix: zabbix
+          distribution: noble
+          components: [main]
+          architectures: [amd64]
+          label: zabbix
+          origin: Zabbix
+          codename: noble
+          suite: zabbix
+        schedule:
+          enabled: true
+          type: monthly
