@@ -271,12 +271,75 @@ def validate_current_config_text(
 
 
 @router.post("/settings/config/save", response_class=HTMLResponse)
-def save_current_config_text(
+async def save_config(
     request: Request,
-    config_content: str = Form(...),
+    config_content: str | None = Form(default=None),
+    config_file: UploadFile | None = File(default=None),
+    sync_after_save: bool = Form(default=False),
+    session: Session = Depends(get_db_session),
     current_user: User = Depends(get_web_admin),
 ):
-    validation = save_repos_config_text(config_content)
+    content = None
+
+    if config_file:
+        raw_content = await config_file.read()
+
+        try:
+            content = raw_content.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            validation = ConfigValidationResponse(
+                valid=False,
+                repo_count=0,
+                repos=[],
+                errors=[
+                    f"Uploaded file is not valid UTF-8: {exc}"
+                ],
+            )
+
+            return templates.TemplateResponse(
+                request=request,
+                name="components/config_validation_result.html",
+                context={
+                    "current_user": current_user,
+                    "title": "Save Config",
+                    "validation": validation,
+                    "saved": False,
+                    "sync_result": None,
+                },
+            )
+
+    elif config_content:
+        content = config_content
+
+    else:
+        validation = ConfigValidationResponse(
+            valid=False,
+            repo_count=0,
+            repos=[],
+            errors=["No configuration content provided."],
+        )
+
+        return templates.TemplateResponse(
+            request=request,
+            name="components/config_validation_result.html",
+            context={
+                "current_user": current_user,
+                "title": "Save Config",
+                "validation": validation,
+                "saved": False,
+                "sync_result": None,
+            },
+        )
+
+    # validate + save
+    validation = save_repos_config_text(content)
+
+    saved = validation.valid
+    sync_result = None
+
+    # optional sync
+    if saved and sync_after_save:
+        sync_result = sync_repos_from_config(session)
 
     return templates.TemplateResponse(
         request=request,
@@ -285,88 +348,7 @@ def save_current_config_text(
             "current_user": current_user,
             "title": "Save Config",
             "validation": validation,
-            "saved": validation.valid,
-        },
-    )
-
-
-@router.post("/settings/config/save-and-sync", response_class=HTMLResponse)
-def save_and_sync_current_config_text(
-    request: Request,
-    config_content: str = Form(...),
-    session: Session = Depends(get_db_session),
-    current_user: User = Depends(get_web_admin),
-):
-    validation = save_repos_config_text(config_content)
-    sync_result = None
-
-    if validation.valid:
-        sync_result = sync_repos_from_config(session)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="components/config_validation_result.html",
-        context={
-            "current_user": current_user,
-            "title": "Save & Sync Config",
-            "validation": validation,
-            "saved": validation.valid,
+            "saved": saved,
             "sync_result": sync_result,
-        },
-    )
-
-
-@router.post("/settings/config/sync-current", response_class=HTMLResponse)
-def sync_current_config_source(
-    request: Request,
-    session: Session = Depends(get_db_session),
-    current_user: User = Depends(get_web_admin),
-):
-    validation = validate_config_file()
-    sync_result = None
-
-    if validation.valid:
-        sync_result = sync_repos_from_config(session)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="components/config_validation_result.html",
-        context={
-            "current_user": current_user,
-            "title": "Sync Current Source",
-            "validation": validation,
-            "saved": False,
-            "sync_result": sync_result,
-        },
-    )
-
-
-@router.post("/settings/config/upload-test", response_class=HTMLResponse)
-async def validate_uploaded_config_file(
-    request: Request,
-    config_file: UploadFile = File(...),
-    current_user: User = Depends(get_web_admin),
-):
-    raw_content = await config_file.read()
-
-    try:
-        config_content = raw_content.decode("utf-8")
-        validation = validate_repos_config_text(config_content)
-    except UnicodeDecodeError as exc:
-        validation = ConfigValidationResponse(
-            valid=False,
-            repo_count=0,
-            repos=[],
-            errors=[f"Uploaded file is not valid UTF-8: {exc}"],
-        )
-
-    return templates.TemplateResponse(
-        request=request,
-        name="components/config_validation_result.html",
-        context={
-            "current_user": current_user,
-            "title": f"Upload Validation: {config_file.filename}",
-            "validation": validation,
-            "saved": False,
         },
     )

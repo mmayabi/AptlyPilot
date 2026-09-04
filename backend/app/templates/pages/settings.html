@@ -289,25 +289,41 @@ actions=[]
                     id="config-upload-form"
                     class="rounded-lg border border-slate-200 p-4"
                     data-config-source-section="local"
-                    hx-post="/settings/config/upload-test"
+                    hx-post="/settings/config/save"
                     hx-target="#config-upload-result"
                     hx-swap="innerHTML"
                     hx-encoding="multipart/form-data">
+
                     <div class="flex flex-wrap items-end gap-3">
                         <label class="min-w-0 flex-1">
-                            <span class="text-xs font-semibold uppercase text-slate-500">Upload New Config For Test</span>
+                            <span class="text-xs font-semibold uppercase text-slate-500">
+                                Upload New Config
+                            </span>
+                        
                             <input
                                 type="file"
                                 name="config_file"
                                 accept=".yaml,.yml,text/yaml,text/plain"
                                 class="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800">
                         </label>
+                    
                         <button
                             type="submit"
+                            name="sync_after_save"
+                            value="false"
                             class="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                            Validate Upload
+                            Validate and Save
+                        </button>
+                    
+                        <button
+                            type="submit"
+                            name="sync_after_save"
+                            value="true"
+                            class="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                            Save & Sync
                         </button>
                     </div>
+                
                     <div id="config-upload-result" class="mt-3"></div>
                 </form>
 
@@ -316,7 +332,10 @@ actions=[]
                         <div class="text-xs font-semibold uppercase text-slate-400">
                             Current Config Editor
                         </div>
+                    
                         <div class="flex items-center gap-2">
+                        
+                            <!-- Validate -->
                             <button
                                 type="button"
                                 class="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-900"
@@ -326,43 +345,48 @@ actions=[]
                                 hx-swap="innerHTML">
                                 Validate
                             </button>
-                            <button
-                                type="button"
-                                class="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-900"
-                                hx-post="/settings/config/sync-current"
-                                hx-target="#config-editor-result"
-                                hx-swap="innerHTML">
-                                Sync Current Source
-                            </button>
+                        
                             {% if config_is_local %}
+                        
+                                <!-- Save -->
                                 <button
                                     type="button"
                                     class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700"
                                     hx-post="/settings/config/save"
                                     hx-target="#config-editor-result"
                                     hx-include="#config-editor-form"
+                                    hx-vals='{"sync_after_save": "false"}'
                                     hx-swap="innerHTML">
                                     Save
                                 </button>
+                            
+                                <!-- Save & Sync -->
                                 <button
                                     type="button"
                                     class="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-                                    hx-post="/settings/config/save-and-sync"
+                                    hx-post="/settings/config/save"
                                     hx-target="#config-editor-result"
                                     hx-include="#config-editor-form"
+                                    hx-vals='{"sync_after_save": "true"}'
                                     hx-swap="innerHTML">
                                     Save & Sync
                                 </button>
+                            
                             {% endif %}
+                            
                         </div>
                     </div>
+                
                     {% if not config_is_local %}
                     <div class="border-b border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-300">
                         This config is loaded from {{ config_source|title }}. Editing is disabled here; update the source repository instead.
                     </div>
                     {% endif %}
+                
                     {% if config_read_error %}
-                    <div class="p-4 text-sm text-red-300">{{ config_read_error }}</div>
+                    <div class="p-4 text-sm text-red-300">
+                        {{ config_read_error }}
+                    </div>
                     {% else %}
                     <textarea
                         name="config_content"
