@@ -86,6 +86,9 @@ class AptlyClient:
                 f"Aptly API returned non-json response: {response.text[:300]}"
             ) from exc
 
+    def get_version(self):
+        return self.request("GET", "/api/version")
+
     def list_mirrors(self) -> list[dict[str, Any]]:
         data = self.request("GET", "/api/mirrors")
 

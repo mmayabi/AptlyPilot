@@ -183,21 +183,25 @@ def test_aptly_connection(
 ):
     try:
         saved_values = get_aptly_connection_values()
+
         client = AptlyClient(
             base_url=aptly_api_url or saved_values["url"],
             username=aptly_api_username or saved_values["username"] or None,
             password=aptly_api_password or saved_values["password"] or None,
             token=aptly_api_token or saved_values["token"] or None,
         )
-        mirrors = client.list_mirrors()
+
+        version = client.get_version()
+
         return templates.TemplateResponse(
             request=request,
             name="components/settings_save_result.html",
             context={
                 "current_user": current_user,
-                "message": f"Connected to Aptly successfully. Mirrors found: {len(mirrors)}.",
+                "message": f"Connected to Aptly successfully. Version: {version}",
             },
         )
+
     except Exception as exc:
         return templates.TemplateResponse(
             request=request,
