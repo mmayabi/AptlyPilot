@@ -122,6 +122,108 @@ class AptlyClient:
 
         return data
 
+    def get_mirror(self, mirror_name: str) -> dict[str, Any] | None:
+        safe_name = quote(mirror_name, safe="")
+
+        try:
+            data = self.request("GET", f"/api/mirrors/{safe_name}")
+        except AptlyAPIError as exc:
+            if "404" in str(exc):
+                return None
+            raise
+
+        if not isinstance(data, dict):
+            raise AptlyAPIError(
+                f"Unexpected response from /api/mirrors/{mirror_name}. Expected dict."
+            )
+
+        return data
+
+    def mirror_exists(self, mirror_name: str) -> bool:
+        return self.get_mirror(mirror_name) is not None
+
+    def create_mirror(
+        self,
+        *,
+        mirror_name: str,
+        archive_url: str,
+        distribution: str,
+        components: list[str] | None = None,
+        architectures: list[str] | None = None,
+        ignore_signatures: bool | None = None,
+    ) -> dict[str, Any]:
+        body = self._build_mirror_config_body(
+            mirror_name=mirror_name,
+            archive_url=archive_url,
+            distribution=distribution,
+            components=components,
+            architectures=architectures,
+            ignore_signatures=ignore_signatures,
+        )
+
+        data = self.request("POST", "/api/mirrors", json=body)
+
+        if not isinstance(data, dict):
+            raise AptlyAPIError("Unexpected response from /api/mirrors. Expected dict.")
+
+        return data
+
+    def update_mirror_config(
+        self,
+        *,
+        mirror_name: str,
+        archive_url: str,
+        distribution: str,
+        components: list[str] | None = None,
+        architectures: list[str] | None = None,
+        ignore_signatures: bool | None = None,
+    ) -> dict[str, Any]:
+        safe_name = quote(mirror_name, safe="")
+        body = self._build_mirror_config_body(
+            mirror_name=mirror_name,
+            archive_url=archive_url,
+            distribution=distribution,
+            components=components,
+            architectures=architectures,
+            ignore_signatures=ignore_signatures,
+        )
+
+        data = self.request("POST", f"/api/mirrors/{safe_name}", json=body)
+
+        if not isinstance(data, dict):
+            raise AptlyAPIError(
+                f"Unexpected response from /api/mirrors/{mirror_name}. Expected dict."
+            )
+
+        return data
+
+    def _build_mirror_config_body(
+        self,
+        *,
+        mirror_name: str,
+        archive_url: str,
+        distribution: str,
+        components: list[str] | None = None,
+        architectures: list[str] | None = None,
+        ignore_signatures: bool | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {
+            "Name": mirror_name,
+            "ArchiveURL": archive_url,
+            "Distribution": distribution,
+        }
+
+        if components is not None:
+            body["Components"] = components
+
+        if architectures is not None:
+            body["Architectures"] = architectures
+
+        if ignore_signatures is not None:
+            body["IgnoreSignatures"] = ignore_signatures
+
+        return body
+
     # -----------------------------
     # Task helpers
     # -----------------------------
@@ -284,6 +386,54 @@ class AptlyClient:
 
         return False
 
+    def _extract_task_id(self, data: Any) -> int | str:
+        """
+        استخراج task id از پاسخ Aptly.
+
+        بسته به نسخه/پیاده‌سازی Aptly، پاسخ async ممکن است یکی از این شکل‌ها باشد:
+        {"ID": 123, ...}
+        {"TaskID": 123}
+        123
+        """
+
+        if isinstance(data, int):
+            return data
+
+        if isinstance(data, str) and data.strip():
+            return data
+
+        if isinstance(data, dict):
+            for key in ("ID", "TaskID", "task_id", "id"):
+                if key in data:
+                    return data[key]
+
+        raise AptlyAPIError(f"Cannot extract task id from Aptly response: {data}")
+
+    def _extract_task_id_or_none(self, data: Any) -> int | str | None:
+        try:
+            return self._extract_task_id(data)
+        except AptlyAPIError:
+            return None
+
+    def _wait_task_response_if_present(
+        self,
+        data: Any,
+        *,
+        poll_interval: int = 5,
+        max_wait_seconds: int = 3600,
+        progress_callback: TaskProgressCallback | None = None,
+    ) -> dict[str, Any] | None:
+        task_id = self._extract_task_id_or_none(data)
+        if task_id is None:
+            return None
+
+        return self.wait_task(
+            task_id=task_id,
+            poll_interval=poll_interval,
+            max_wait_seconds=max_wait_seconds,
+            progress_callback=progress_callback,
+        )
+
     # -----------------------------
     # Mirror update
     # -----------------------------
@@ -373,53 +523,6 @@ class AptlyClient:
             **task_result,
         }
 
-    def _extract_task_id(self, data: Any) -> int | str:
-        """
-        استخراج task id از پاسخ Aptly.
-
-        بسته به نسخه/پیاده‌سازی Aptly، پاسخ async ممکن است یکی از این شکل‌ها باشد:
-        {"ID": 123, ...}
-        {"TaskID": 123}
-        123
-        """
-
-        if isinstance(data, int):
-            return data
-
-        if isinstance(data, str) and data.strip():
-            return data
-
-        if isinstance(data, dict):
-            for key in ("ID", "TaskID", "task_id", "id"):
-                if key in data:
-                    return data[key]
-
-        raise AptlyAPIError(f"Cannot extract task id from Aptly response: {data}")
-
-    def _extract_task_id_or_none(self, data: Any) -> int | str | None:
-        try:
-            return self._extract_task_id(data)
-        except AptlyAPIError:
-            return None
-
-    def _wait_task_response_if_present(
-        self,
-        data: Any,
-        *,
-        poll_interval: int = 5,
-        max_wait_seconds: int = 3600,
-        progress_callback: TaskProgressCallback | None = None,
-    ) -> dict[str, Any] | None:
-        task_id = self._extract_task_id_or_none(data)
-        if task_id is None:
-            return None
-
-        return self.wait_task(
-            task_id=task_id,
-            poll_interval=poll_interval,
-            max_wait_seconds=max_wait_seconds,
-            progress_callback=progress_callback,
-        )
     
     # -----------------------------
     # Snapshot Create from Mirror

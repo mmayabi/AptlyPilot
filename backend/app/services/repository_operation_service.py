@@ -8,6 +8,8 @@ from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
 from app.clients.aptly_client import AptlyClient
+from app.clients.aptly_desired_state import build_mirror_desired_state_from_repo
+from app.clients.reconciler import MirrorReconciler
 from app.models.aptly_state import AptlyPublishState, AptlySnapshotState
 from app.models.repo import Repo
 from app.services.aptly_inventory_service import sync_aptly_inventory
@@ -125,16 +127,16 @@ def run_mirror_update_operation(
             "reason": "Mirror is disabled for this repository",
         }
 
-    mirror_name = get_effective_mirror_name(repo)
+    desired = build_mirror_desired_state_from_repo(repo)
+    desired.skip_existing_packages = params.get("skip_existing_packages")
+    mirror_name = desired.name
 
-    result = aptly_client.update_mirror(
-        mirror_name=mirror_name,
+    reconcile_result = MirrorReconciler(aptly_client).reconcile(
+        desired=desired,
+        sync=bool(params.get("sync", True)),
         run_async=bool(params.get("run_async", True)),
         wait=bool(params.get("wait", True)),
         force_update=bool(params.get("force_update", False)),
-        ignore_signatures=repo.mirror_ignore_signatures,
-        skip_existing_packages=params.get("skip_existing_packages"),
-        max_tries=repo.mirror_max_tries,
         poll_interval=int(params.get("poll_interval", 5)),
         max_wait_seconds=int(params.get("max_wait_seconds", 3600)),
         progress_callback=progress_callback,
@@ -150,7 +152,9 @@ def run_mirror_update_operation(
         "repo_id": repo.id,
         "repo_name": repo.name,
         "mirror_name": mirror_name,
-        "result": result,
+        "action": reconcile_result.action.value,
+        "changed_fields": reconcile_result.changed_fields,
+        "result": reconcile_result.result,
         "inventory_sync": sync_result,
     }
 
