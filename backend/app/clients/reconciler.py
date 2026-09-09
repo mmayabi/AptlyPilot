@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from app.clients.aptly_client import AptlyClient
+from app.clients.aptly_client import AptlyClient, TaskProgressCallback
 from app.clients.aptly_desired_state import MirrorDesiredState
 
 
@@ -38,6 +38,7 @@ class MirrorReconciler:
         force_update: bool = False,
         poll_interval: int = 5,
         max_wait_seconds: int = 3600,
+        progress_callback: TaskProgressCallback | None = None,
     ) -> ReconcileResult:
         if not desired.enabled:
             return ReconcileResult(
@@ -73,6 +74,7 @@ class MirrorReconciler:
                     max_tries=desired.max_tries,
                     poll_interval=poll_interval,
                     max_wait_seconds=max_wait_seconds,
+                    progress_callback=progress_callback,
                 )
 
                 result = {
@@ -110,6 +112,7 @@ class MirrorReconciler:
                     max_tries=desired.max_tries,
                     poll_interval=poll_interval,
                     max_wait_seconds=max_wait_seconds,
+                    progress_callback=progress_callback,
                 )
 
                 return ReconcileResult(
@@ -146,6 +149,7 @@ class MirrorReconciler:
                 max_tries=desired.max_tries,
                 poll_interval=poll_interval,
                 max_wait_seconds=max_wait_seconds,
+                progress_callback=progress_callback,
             )
 
             result = {
