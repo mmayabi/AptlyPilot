@@ -46,7 +46,7 @@ PIPELINE_TEMPLATE_NAME = "aptly.repository.pipeline"
 def _merge_model(default_data: dict[str, Any], override_model) -> dict[str, Any]:
     merged = deepcopy(default_data)
     if override_model is not None:
-        merged.update(override_model.model_dump(mode="json", exclude_none=True))
+        merged.update(override_model.model_dump(mode="json", exclude_none=True, exclude_unset=True))
     return merged
 
 

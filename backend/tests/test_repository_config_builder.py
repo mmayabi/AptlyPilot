@@ -114,7 +114,7 @@ def test_disable_schedule_preserves_inherited_type_and_other_fields(setup_builde
     updated = yaml.safe_load(result.textareas["yaml_content"])
     expected = deepcopy(config)
     expected["repos"]["debian"]["bookworm"]["main"]["schedule"] = {
-        "enabled": False, "type": "weekly",
+        "enabled": False,
     }
     assert updated == expected
     response = client.post("/repositories/config-builder/save", data={
@@ -150,7 +150,7 @@ def test_create_without_schedule(setup_builder):
     assert result == config
     assert new["schedule"]["enabled"] is False
     assert new["publish"]["distribution"] == "bookworm"
-    assert new["test"]["checks"] == ["metadata"]
+    assert "test" not in new
 
 
 def test_create_cannot_overwrite_existing_repository(setup_builder):
@@ -184,3 +184,21 @@ def test_invalid_source_is_not_replaced_with_empty_config(setup_builder):
     assert "Cannot build config" in response.text
     assert path.read_text() == "repos: [invalid"
 
+
+
+def test_new_form_displays_file_defaults(setup_builder):
+    client, _, _ = setup_builder
+    form = FormParser(client.get("/repositories/config-builder").text).data
+    assert form["schedule_type"] == "weekly"
+    assert form["retention_keep_last"] == "7"
+    assert form["publish_endpoint"] == "filesystem:repo"
+    assert "inherited_fields" not in form
+
+
+def test_partial_schedule_override_inherits_type():
+    from app.schemas.repo import ScheduleConfig
+    from app.services.repo_service import _merge_model
+
+    assert _merge_model({"enabled": True, "type": "weekly"}, ScheduleConfig(enabled=False)) == {
+        "enabled": False, "type": "weekly",
+    }

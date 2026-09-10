@@ -21,6 +21,7 @@ from app.services.config_loader_service import (
     validate_repos_config_text,
 )
 from app.services.repo_service import merge_repo_config, sync_repos_from_config
+from app.services.repository_builder_defaults import omit_unchanged_defaults
 from app.ui.deps import get_web_admin
 
 router = APIRouter(tags=["UI-Repositories"])
@@ -125,9 +126,16 @@ def _repository_key(provider: str, release: str, name: str) -> str:
     return json.dumps([provider, release, name], ensure_ascii=False)
 
 
-def _form_values(config: dict, key: str) -> dict:
-    provider, release, name = json.loads(key)
+def _form_values(config: dict, key: str = "") -> dict:
     parsed = ReposConfigFile.model_validate(config)
+    if not key:
+        return {
+            f"{section}_{field}": ", ".join(value) if isinstance(value, list)
+            else value if value is not None else ""
+            for section, fields in parsed.defaults.model_dump(mode="json").items()
+            for field, value in fields.items()
+        }
+    provider, release, name = json.loads(key)
     resolved = merge_repo_config(
         provider, release, name, parsed.defaults, parsed.repos[provider][release][name]
     ).raw_config
@@ -164,11 +172,6 @@ def _build_config_with_repository(
             raise ValueError("Repository identity cannot be changed while editing.")
         original = release_repos[repo_name]
         values = _form_values(current_config, repository_key)
-        parsed = ReposConfigFile.model_validate(current_config)
-        resolved = merge_repo_config(
-            provider, release, repo_name, parsed.defaults,
-            parsed.repos[provider][release][repo_name],
-        ).raw_config
         for section, fields in repo_entry.items():
             if section == "mirror_name":
                 if fields != values["mirror_name"]:
@@ -181,7 +184,7 @@ def _build_config_with_repository(
                     old = _split_csv(old or "")
                 if value != old and not (value is None and old == ""):
                     if not isinstance(original.get(section), dict):
-                        original[section] = deepcopy(resolved[section])
+                        original[section] = {}
                     original[section][field] = value
     else:
         if repo_name in release_repos:
@@ -190,7 +193,8 @@ def _build_config_with_repository(
         for field in ("distribution", "components", "architectures"):
             if not repo_entry["publish"][field]:
                 repo_entry["publish"][field] = deepcopy(repo_entry["mirror"][field])
-        repo_entry["test"]["checks"] = ["metadata"]
+        defaults = ReposConfigFile.model_validate(current_config).defaults.model_dump(mode="json")
+        omit_unchanged_defaults(repo_entry, defaults)
         release_repos[repo_name] = repo_entry
     return yaml.safe_dump(config, allow_unicode=True, sort_keys=False, default_flow_style=False)
 
@@ -222,7 +226,7 @@ def repository_config_builder(
             for release, repos in releases.items()
             for name in repos
         ]
-        values = _form_values(config, repository_key) if repository_key else {}
+        values = _form_values(config, repository_key)
     except Exception as exc:
         return _builder_error(request, f"Cannot load config: {exc}")
     return templates.TemplateResponse(

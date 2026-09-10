@@ -1,1 +1,17 @@
 /* Project UI overrides live here. Tailwind is built into css/tailwind-built.css. */
+
+/* Gentle grouping within the repository config builder's single form. */
+.repository-builder-mirror {
+    background-color: #f3f8ff;
+    border-color: #dbe7f5;
+}
+
+.repository-builder-snapshot {
+    background-color: #fffbf2;
+    border-color: #f0e6ce;
+}
+
+.repository-builder-publish {
+    background-color: #f2faf6;
+    border-color: #d8ebe1;
+}

@@ -38,44 +38,44 @@
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
             <label class="block">
                 <span class="text-sm font-medium text-slate-700">Provider</span>
-                <input name="provider" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="debian" value="{{ values.get('provider', '') }}" {% if repository_key %}readonly{% endif %}>
+                <input name="provider" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="debian" value="{{ values.get('provider', '') }}" {% if repository_key %}readonly{% endif %}>
             </label>
             <label class="block">
                 <span class="text-sm font-medium text-slate-700">Release</span>
-                <input name="release" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="bookworm" value="{{ values.get('release', '') }}" {% if repository_key %}readonly{% endif %}>
+                <input name="release" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="bookworm" value="{{ values.get('release', '') }}" {% if repository_key %}readonly{% endif %}>
             </label>
             <label class="block">
                 <span class="text-sm font-medium text-slate-700">Repository name</span>
-                <input name="repo_name" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="debian-12-bookworm" value="{{ values.get('repo_name', '') }}" {% if repository_key %}readonly{% endif %}>
+                <input name="repo_name" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="debian-12-bookworm" value="{{ values.get('repo_name', '') }}" {% if repository_key %}readonly{% endif %}>
             </label>
         </div>
 
-        <div>
+        <div class="repository-builder-mirror rounded-lg border p-4">
             <h3 class="text-base font-semibold text-slate-900">Mirror</h3>
             <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Archive URL</span>
-                    <input name="mirror_archive_url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://deb.debian.org/debian" value="{{ values.get('mirror_archive_url', '') }}">
+                    <input name="mirror_archive_url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="https://deb.debian.org/debian" value="{{ values.get('mirror_archive_url', '') }}">
                 </label>
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Mirror name override</span>
-                    <input name="mirror_name" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="optional" value="{{ values.get('mirror_name', '') }}">
+                    <input name="mirror_name" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="optional" value="{{ values.get('mirror_name', '') }}">
                 </label>
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Distribution</span>
-                    <input name="mirror_distribution" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="bookworm" value="{{ values.get('mirror_distribution', '') }}">
+                    <input name="mirror_distribution" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="bookworm" value="{{ values.get('mirror_distribution', '') }}">
                 </label>
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Components</span>
-                    <input name="mirror_components" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="main, contrib, non-free" value="{{ values.get('mirror_components', '') }}">
+                    <input name="mirror_components" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="main, contrib, non-free" value="{{ values.get('mirror_components', '') }}">
                 </label>
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Architectures</span>
-                    <input name="mirror_architectures" required value="{{ values.get('mirror_architectures', 'amd64') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+                    <input name="mirror_architectures" required value="{{ values.get('mirror_architectures', 'amd64') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white">
                 </label>
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Max tries</span>
-                    <input name="mirror_max_tries" type="number" min="1" value="{{ values.get('mirror_max_tries', '3') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+                    <input name="mirror_max_tries" type="number" min="1" value="{{ values.get('mirror_max_tries', '3') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white">
                 </label>
             </div>
             <label class="mt-3 inline-flex items-center gap-2 text-sm text-slate-700">
@@ -84,40 +84,54 @@
             </label>
         </div>
 
-        <div>
+        <div class="repository-builder-snapshot rounded-lg border p-4">
+            <h3 class="text-base font-semibold text-slate-900">Snapshot</h3>
+            <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Snapshot naming</span>
+                <input name="snapshot_naming" value="{{ values.get('snapshot_naming', '{name}-{timestamp}') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white">
+            </label>
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Retention keep last</span>
+                <input name="retention_keep_last" type="number" min="1" value="{{ values.get('retention_keep_last', '3') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white">
+            </label>
+            </div>
+        </div>
+
+        <div class="repository-builder-publish rounded-lg border p-4">
             <h3 class="text-base font-semibold text-slate-900">Publish</h3>
             <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Endpoint</span>
-                    <input name="publish_endpoint" value="{{ values.get('publish_endpoint', 'filesystem:repository') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+                    <input name="publish_endpoint" value="{{ values.get('publish_endpoint', 'filesystem:repository') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white">
                 </label>
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Prefix</span>
-                    <input name="publish_prefix" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="debian" value="{{ values.get('publish_prefix', '') }}">
+                    <input name="publish_prefix" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="debian" value="{{ values.get('publish_prefix', '') }}">
                 </label>
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Distribution</span>
-                    <input name="publish_distribution" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="defaults to mirror distribution" value="{{ values.get('publish_distribution', '') }}">
+                    <input name="publish_distribution" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="defaults to mirror distribution" value="{{ values.get('publish_distribution', '') }}">
                 </label>
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Components</span>
-                    <input name="publish_components" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="defaults to mirror components" value="{{ values.get('publish_components', '') }}">
+                    <input name="publish_components" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="defaults to mirror components" value="{{ values.get('publish_components', '') }}">
                 </label>
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Architectures</span>
-                    <input name="publish_architectures" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="defaults to mirror architectures" value="{{ values.get('publish_architectures', '') }}">
+                    <input name="publish_architectures" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="defaults to mirror architectures" value="{{ values.get('publish_architectures', '') }}">
                 </label>
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">GPG key</span>
-                    <input name="publish_gpg_key" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="optional" value="{{ values.get('publish_gpg_key', '') }}">
+                    <input name="publish_gpg_key" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="optional" value="{{ values.get('publish_gpg_key', '') }}">
                 </label>
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Label</span>
-                    <input name="publish_label" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" value="{{ values.get('publish_label', '') }}">
+                    <input name="publish_label" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" value="{{ values.get('publish_label', '') }}">
                 </label>
                 <label class="block">
                     <span class="text-sm font-medium text-slate-700">Origin</span>
-                    <input name="publish_origin" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" value="{{ values.get('publish_origin', '') }}">
+                    <input name="publish_origin" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" value="{{ values.get('publish_origin', '') }}">
                 </label>
             </div>
             <div class="mt-3 flex flex-wrap gap-4 text-sm text-slate-700">
@@ -129,14 +143,6 @@
         </div>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <label class="block">
-                <span class="text-sm font-medium text-slate-700">Snapshot naming</span>
-                <input name="snapshot_naming" value="{{ values.get('snapshot_naming', '{name}-{timestamp}') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
-            </label>
-            <label class="block">
-                <span class="text-sm font-medium text-slate-700">Retention keep last</span>
-                <input name="retention_keep_last" type="number" min="1" value="{{ values.get('retention_keep_last', '3') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
-            </label>
             <label class="block">
                 <span class="text-sm font-medium text-slate-700">Schedule</span>
                 <select name="schedule_type" {% if not values.get('schedule_enabled', true) %}disabled{% endif %} class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
