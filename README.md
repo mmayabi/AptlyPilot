@@ -55,7 +55,7 @@ AptlyPilot turns Aptly from a powerful repository engine into an operational pla
 
 ## Demo
 
-[![AptlyPilot Demo](docs/images/demo-thumbnail.png)](https://youtu.be/rXjc-uKWyxg)
+[![AptlyPilot Demo](https://img.youtube.com/vi/rXjc-uKWyxg/hqdefault.jpg)](https://youtu.be/rXjc-uKWyxg)
 
 **2-minute overview of AptlyPilot**
 
