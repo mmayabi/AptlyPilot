@@ -1,0 +1,175 @@
+<section class="border border-slate-200 bg-white p-6 shadow-sm">
+    <div class="flex items-start justify-between gap-4">
+        <div>
+            <h2 class="text-lg font-semibold text-slate-900">Repository Config Builder</h2>
+            <p class="mt-1 text-sm text-slate-500">
+                Source: {{ config_source }} · {{ config_location }}
+            </p>
+        </div>
+        <button
+            type="button"
+            class="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+            onclick="document.getElementById('repository-config-builder').innerHTML = ''">
+            Close
+        </button>
+    </div>
+
+    <label class="mt-6 block text-sm font-medium text-slate-700">
+        Repository
+        <select name="repository_key" hx-get="/repositories/config-builder"
+            hx-target="#repository-config-builder" hx-swap="innerHTML"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+            <option value="">New repository</option>
+            {% for repository in repository_choices %}
+            <option value="{{ repository.key }}" {% if repository.key == repository_key %}selected{% endif %}>{{ repository.label }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <p class="mt-2 text-sm text-slate-500">Select an existing repository to edit it, or create a new one. Preview changes before saving. This form reads the saved YAML; save any editor changes first.</p>
+
+    <form
+        class="mt-6 space-y-6"
+        hx-post="/repositories/config-builder/preview"
+        hx-target="#repository-config-preview"
+        hx-swap="innerHTML">
+
+        <input type="hidden" name="repository_key" value="{{ repository_key }}">
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Provider</span>
+                <input name="provider" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="debian" value="{{ values.get('provider', '') }}" {% if repository_key %}readonly{% endif %}>
+            </label>
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Release</span>
+                <input name="release" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="bookworm" value="{{ values.get('release', '') }}" {% if repository_key %}readonly{% endif %}>
+            </label>
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Repository name</span>
+                <input name="repo_name" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="debian-12-bookworm" value="{{ values.get('repo_name', '') }}" {% if repository_key %}readonly{% endif %}>
+            </label>
+        </div>
+
+        <div>
+            <h3 class="text-base font-semibold text-slate-900">Mirror</h3>
+            <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Archive URL</span>
+                    <input name="mirror_archive_url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://deb.debian.org/debian" value="{{ values.get('mirror_archive_url', '') }}">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Mirror name override</span>
+                    <input name="mirror_name" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="optional" value="{{ values.get('mirror_name', '') }}">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Distribution</span>
+                    <input name="mirror_distribution" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="bookworm" value="{{ values.get('mirror_distribution', '') }}">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Components</span>
+                    <input name="mirror_components" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="main, contrib, non-free" value="{{ values.get('mirror_components', '') }}">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Architectures</span>
+                    <input name="mirror_architectures" required value="{{ values.get('mirror_architectures', 'amd64') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Max tries</span>
+                    <input name="mirror_max_tries" type="number" min="1" value="{{ values.get('mirror_max_tries', '3') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+                </label>
+            </div>
+            <label class="mt-3 inline-flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" name="mirror_ignore_signatures" value="true" class="rounded border-slate-300" {% if values.get('mirror_ignore_signatures', false) %}checked{% endif %}>
+                Ignore mirror signatures
+            </label>
+        </div>
+
+        <div>
+            <h3 class="text-base font-semibold text-slate-900">Publish</h3>
+            <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Endpoint</span>
+                    <input name="publish_endpoint" value="{{ values.get('publish_endpoint', 'filesystem:repository') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Prefix</span>
+                    <input name="publish_prefix" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="debian" value="{{ values.get('publish_prefix', '') }}">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Distribution</span>
+                    <input name="publish_distribution" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="defaults to mirror distribution" value="{{ values.get('publish_distribution', '') }}">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Components</span>
+                    <input name="publish_components" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="defaults to mirror components" value="{{ values.get('publish_components', '') }}">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Architectures</span>
+                    <input name="publish_architectures" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="defaults to mirror architectures" value="{{ values.get('publish_architectures', '') }}">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">GPG key</span>
+                    <input name="publish_gpg_key" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="optional" value="{{ values.get('publish_gpg_key', '') }}">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Label</span>
+                    <input name="publish_label" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" value="{{ values.get('publish_label', '') }}">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700">Origin</span>
+                    <input name="publish_origin" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" value="{{ values.get('publish_origin', '') }}">
+                </label>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-4 text-sm text-slate-700">
+                <label class="inline-flex items-center gap-2"><input type="checkbox" name="publish_skip_signing" value="true" class="rounded border-slate-300" {% if values.get('publish_skip_signing', false) %}checked{% endif %}>Skip signing</label>
+                <label class="inline-flex items-center gap-2"><input type="checkbox" name="publish_acquire_by_hash" value="true" class="rounded border-slate-300" {% if values.get('publish_acquire_by_hash', true) %}checked{% endif %}>Acquire by hash</label>
+                <label class="inline-flex items-center gap-2"><input type="checkbox" name="publish_skip_bz2" value="true" class="rounded border-slate-300" {% if values.get('publish_skip_bz2', true) %}checked{% endif %}>Skip bz2</label>
+                <label class="inline-flex items-center gap-2"><input type="checkbox" name="publish_skip_contents" value="true" class="rounded border-slate-300" {% if values.get('publish_skip_contents', true) %}checked{% endif %}>Skip contents</label>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Snapshot naming</span>
+                <input name="snapshot_naming" value="{{ values.get('snapshot_naming', '{name}-{timestamp}') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+            </label>
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Retention keep last</span>
+                <input name="retention_keep_last" type="number" min="1" value="{{ values.get('retention_keep_last', '3') }}" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+            </label>
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Schedule</span>
+                <select name="schedule_type" {% if not values.get('schedule_enabled', true) %}disabled{% endif %} class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+                    <option value="daily" {% if values.get('schedule_type', 'monthly') == 'daily' %}selected{% endif %}>Daily</option>
+                    <option value="weekly" {% if values.get('schedule_type', 'monthly') == 'weekly' %}selected{% endif %}>Weekly</option>
+                    <option value="monthly" {% if values.get('schedule_type', 'monthly') == 'monthly' %}selected{% endif %}>Monthly</option>
+                </select>
+            </label>
+        </div>
+
+        <input type="hidden" name="snapshot_enabled" value="{{ 'true' if values.get('snapshot_enabled', true) else 'false' }}">
+        <input type="hidden" name="snapshot_timestamp_format" value="{{ values.get('snapshot_timestamp_format', '%Y%m%d-%H%M') }}">
+        <input type="hidden" name="publish_enabled" value="{{ 'true' if values.get('publish_enabled', true) else 'false' }}">
+        <input type="hidden" name="test_enabled" value="{{ 'true' if values.get('test_enabled', true) else 'false' }}">
+        <label class="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" name="schedule_enabled" value="true"
+                onchange="const select = this.form.querySelector('select[name=schedule_type]');
+                    const fallback = document.getElementById('schedule-type-fallback');
+                    fallback.value = select.value;
+                    select.disabled = !this.checked;
+                    fallback.disabled = this.checked" {% if values.get('schedule_enabled', true) %}checked{% endif %}>
+            Enable schedule
+        </label>
+        <input type="hidden" name="schedule_type" value="{{ values.get('schedule_type', 'monthly') }}"
+            id="schedule-type-fallback" {% if values.get('schedule_enabled', true) %}disabled{% endif %}>
+
+
+        <input type="hidden" name="publish_codename" value="{{ values.get('publish_codename', '') }}">
+        <input type="hidden" name="publish_suite" value="{{ values.get('publish_suite', '') }}">
+        <button type="submit" class="rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            Preview YAML
+        </button>
+    </form>
+
+    <div id="repository-config-preview" class="mt-6"></div>
+</section>

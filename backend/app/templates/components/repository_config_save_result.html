@@ -1,0 +1,14 @@
+{% if validation.valid %}
+    <div class="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+        Config saved to {{ config_location }}.
+        {% if sync_result %}
+            Synced {{ sync_result.total }} repositories.
+        {% endif %}
+    </div>
+{% else %}
+    <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        {% for error in validation.errors %}
+            <div>{{ error }}</div>
+        {% endfor %}
+    </div>
+{% endif %}

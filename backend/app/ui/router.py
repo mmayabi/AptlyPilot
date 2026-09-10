@@ -1,12 +1,22 @@
 from fastapi import APIRouter
 
-from app.ui import administration, auth, dashboard, repositories, schedules, settings, tasks
+from app.ui import (
+    administration,
+    auth,
+    dashboard,
+    repositories,
+    repository_config_builder,
+    schedules,
+    settings,
+    tasks,
+)
 
 ui_router = APIRouter()
 
 ui_router.include_router(auth.router)
 ui_router.include_router(administration.router)
 ui_router.include_router(dashboard.router)
+ui_router.include_router(repository_config_builder.router)
 ui_router.include_router(repositories.router)
 ui_router.include_router(schedules.router)
 ui_router.include_router(settings.router)
