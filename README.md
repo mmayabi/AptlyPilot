@@ -53,6 +53,17 @@ However, operating Aptly at scale requires additional capabilities for automatio
 
 AptlyPilot turns Aptly from a powerful repository engine into an operational platform for managing the complete lifecycle of Debian repositories.
 
+## Demo
+
+[![AptlyPilot Demo](docs/images/demo-thumbnail.png)](https://youtu.be/rXjc-uKWyxg)
+
+**2-minute overview of AptlyPilot**
+
+See Repository as Code, Aptly synchronization, repository state tracking,
+automated pipelines, and scheduled execution in action.
+
+▶️ [Watch the AptlyPilot Demo on YouTube](https://youtu.be/rXjc-uKWyxg)
+
 ## How to define Repository as Code?
 
 Define repository lifecycle using declarative configuration.
@@ -74,17 +85,6 @@ mirror:
 
 snapshot:
   retention: 10
-```
-
-
-## Demo
-
-_Add your demo video or GIF here._
-
-Example:
-
-```markdown
-![AptlyPilot Demo](docs/images/demo.gif)
 ```
 
 ## Installation
@@ -139,4 +139,4 @@ lifecycle management.
 
 Contributions are welcome.
 
-sPlease open an issue or submit a pull request.
+Please open an issue or submit a pull request.
