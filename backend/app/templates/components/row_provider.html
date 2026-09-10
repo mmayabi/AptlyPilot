@@ -64,7 +64,7 @@
 
     <!-- Retention -->
     <td class="px-5 py-4">
-        {% with retention_ok_count=provider.retention_ok_count, retention_exceeded_count=provider.retention_exceeded_count %}
+        {% with retention_ok_count=provider.retention_ok_count, retention_exceeded_count=provider.retention_exceeded_count, retention_unmanaged_count=provider.retention_unmanaged_count %}
         {% include "components/retention_badge.html" %}
         {% endwith %}
     </td>

@@ -560,6 +560,7 @@ def build_repo_dashboard_item(
 
     return {
         "repo_id": repo.id,
+        "source_state": "managed",
         "provider": repo.provider,
         "release": repo.release,
         "name": repo.name,
@@ -616,6 +617,96 @@ def build_repo_dashboard_item(
     }
 
 
+def build_unmanaged_mirror_dashboard_item(
+    mirror: AptlyMirrorState,
+    snapshots_by_source_mirror: dict[str, list[AptlySnapshotState]],
+    all_publishes: list[AptlyPublishState],
+) -> dict[str, Any]:
+    snapshots = snapshots_by_source_mirror.get(mirror.name, [])
+    latest_snapshot = get_latest_snapshot(snapshots)
+    snapshot_names = [snapshot.name for snapshot in snapshots]
+    related_publishes = find_publishes_by_snapshot_names(
+        publishes=all_publishes,
+        snapshot_names=snapshot_names,
+    )
+    latest_published_snapshot = get_latest_published_snapshot(
+        snapshots=snapshots,
+        publishes=related_publishes,
+    )
+
+    warning = {
+        "code": "MIRROR_NOT_IN_CONFIG",
+        "severity": "warning",
+        "message": "Mirror exists in Aptly inventory but is not defined in desired config",
+        "actual": mirror.name,
+    }
+
+    mirror_update_age_days = days_since(mirror.last_download_date)
+    publish = related_publishes[0] if related_publishes else None
+
+    return {
+        "repo_id": None,
+        "source_state": "actual_only",
+        "provider": "Aptly Unmanaged inventories",
+        "release": "Unmanaged mirrors",
+        "name": mirror.name,
+        "effective_mirror_name": mirror.name,
+
+        "mirror_enabled": False,
+        "snapshot_enabled": False,
+        "publish_enabled": False,
+
+        "mirror_exists": True,
+        "mirror_distribution": mirror.distribution,
+        "mirror_archive_url": mirror.archive_root,
+        "mirror_components": mirror.components,
+        "mirror_architectures": mirror.architectures,
+
+        "latest_mirror_update_at": mirror.last_download_date,
+        "last_download_date": mirror.last_download_date,
+        "days_since_last_download": mirror_update_age_days,
+
+        "snapshots_count": len(snapshots),
+        "retention_keep_last": None,
+        "retention_status": "unmanaged",
+
+        "latest_snapshot_name": latest_snapshot.name if latest_snapshot else None,
+        "latest_snapshot_created_at": latest_snapshot.created_at_aptly if latest_snapshot else None,
+        "latest_mirror_has_snapshot": None,
+
+        "publish_exists": bool(related_publishes),
+        "publish_id": publish.id if publish else None,
+        "publish_prefix": publish.prefix if publish else None,
+        "publish_distribution": publish.distribution if publish else None,
+        "publish_path": publish.path if publish else None,
+
+        "latest_snapshot_is_published": None,
+
+        "published_snapshot_name": latest_published_snapshot.name if latest_published_snapshot else None,
+        "published_snapshot_created_at": (
+            latest_published_snapshot.created_at_aptly
+            if latest_published_snapshot
+            else None
+        ),
+        "publish_matches_latest_mirror_update": None,
+
+        "pipeline_status": "unmanaged",
+
+        "operational_status": "idle",
+        "current_operation_type": None,
+        "current_job_id": None,
+        "current_queue_item_id": None,
+        "current_execution_id": None,
+
+        "compliance_status": "non_compliant",
+        "health_status": "warning",
+
+        "compliance_issues": [warning],
+        "warnings": [warning],
+        "errors": [],
+    }
+
+
 def load_dashboard_base_data(
     session: Session,
 ) -> tuple[
@@ -654,7 +745,7 @@ def build_all_repo_dashboard_items(session: Session) -> list[dict[str, Any]]:
         repo_ids=[repo.id for repo in repos if repo.id is not None],
     )
 
-    return [
+    managed_items = [
         build_repo_dashboard_item(
             repo=repo,
             mirrors_by_name=mirrors_by_name,
@@ -664,6 +755,21 @@ def build_all_repo_dashboard_items(session: Session) -> list[dict[str, Any]]:
         )
         for repo in repos
     ]
+    managed_mirror_names = {
+        get_effective_mirror_name(repo)
+        for repo in repos
+    }
+    unmanaged_items = [
+        build_unmanaged_mirror_dashboard_item(
+            mirror=mirror,
+            snapshots_by_source_mirror=snapshots_by_source_mirror,
+            all_publishes=publishes,
+        )
+        for mirror_name, mirror in mirrors_by_name.items()
+        if mirror_name not in managed_mirror_names
+    ]
+
+    return managed_items + unmanaged_items
 
 
 def summarize_items(items: list[dict[str, Any]]) -> dict[str, Any]:
@@ -693,6 +799,7 @@ def summarize_items(items: list[dict[str, Any]]) -> dict[str, Any]:
 
         "retention_ok_count": count_items(items, "retention_status", "ok"),
         "retention_exceeded_count": count_items(items, "retention_status", "exceeded"),
+        "retention_unmanaged_count": count_items(items, "retention_status", "unmanaged"),
 
         "latest_update_at": latest_update_at,
         "oldest_update_at": oldest_update_at,
@@ -710,10 +817,6 @@ def summarize_items(items: list[dict[str, Any]]) -> dict[str, Any]:
 
 def get_dashboard_summary(session: Session) -> dict[str, Any]:
     repos, mirrors_by_name, snapshots_by_source_mirror, publishes = load_dashboard_base_data(session)
-    operation_states = get_repo_operation_states(
-        session=session,
-        repo_ids=[repo.id for repo in repos if repo.id is not None],
-    )
 
     snapshots = [
         snapshot
@@ -721,16 +824,7 @@ def get_dashboard_summary(session: Session) -> dict[str, Any]:
         for snapshot in snapshot_group
     ]
 
-    items = [
-        build_repo_dashboard_item(
-            repo=repo,
-            mirrors_by_name=mirrors_by_name,
-            snapshots_by_source_mirror=snapshots_by_source_mirror,
-            all_publishes=publishes,
-            operation_state=operation_states.get(repo.id),
-        )
-        for repo in repos
-    ]
+    items = build_all_repo_dashboard_items(session)
 
     providers = {item["provider"] for item in items}
     releases = {(item["provider"], item["release"]) for item in items}
@@ -781,6 +875,7 @@ def get_dashboard_summary(session: Session) -> dict[str, Any]:
 
         "retention_ok_count": count_items(items, "retention_status", "ok"),
         "retention_exceeded_count": count_items(items, "retention_status", "exceeded"),
+        "retention_unmanaged_count": count_items(items, "retention_status", "unmanaged"),
 
         "latest_aptly_sync_at": latest_aptly_sync_at,
         "latest_config_sync_at": latest_config_sync_at,
